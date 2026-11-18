@@ -67,15 +67,16 @@ class FaceService:
 
     def detect_face(self, frame: np.ndarray) -> np.ndarray | None:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        eq = cv2.equalizeHist(gray)
         faces = self.face_cascade.detectMultiScale(
-            gray, scaleFactor=1.3, minNeighbors=5, minSize=(80, 80)
+            eq, scaleFactor=1.15, minNeighbors=4, minSize=(60, 60)
         )
         if len(faces) == 0:
             return None
 
         # keep the largest face in frame
         x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-        roi = gray[y : y + h, x : x + w]
+        roi = eq[y : y + h, x : x + w]
         return cv2.resize(roi, (200, 200))
 
     async def enroll_face(
@@ -181,3 +182,27 @@ class FaceService:
         if confidence < threshold:
             return int(label), float(confidence), "match"
         return int(label), float(confidence), "no_match"
+
+    async def capture_and_recognize(
+        self, stream_url: str, threshold: float, max_frames: int = 4
+    ) -> tuple[int, float, str]:
+        """Capture a short burst of frames and return the best face recognition result."""
+        if self.bridge and self.bridge.is_online():
+            raw_frames = await self.bridge.request_frames(count=max_frames, timeout=20.0)
+            frames = [self._decode_jpeg(jpg, "tunnel bridge") for jpg in raw_frames]
+        else:
+            frames = []
+            for _ in range(max_frames):
+                frames.append(await self.capture_from_esp32(stream_url))
+
+        best = (-1, 0.0, "no_face_detected")
+        for frame in frames:
+            label, confidence, status = self.recognize_face(frame, threshold)
+            if status == "match":
+                return label, confidence, status
+            if status == "no_match":
+                if best[2] != "no_match" or confidence < best[1]:
+                    best = (label, confidence, status)
+            elif best[2] == "no_face_detected" and status == "no_model":
+                best = (label, confidence, status)
+        return best

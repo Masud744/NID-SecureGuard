@@ -56,9 +56,8 @@ class AuthService:
             return self._denied(nid_number, reason=reason)
 
         try:
-            frame = await self.face.capture_from_esp32(stream_url)
-            label, confidence, face_status = self.face.recognize_face(
-                frame, self.config.FACE_CONFIDENCE_THRESHOLD
+            label, confidence, face_status = await self.face.capture_and_recognize(
+                stream_url, self.config.FACE_CONFIDENCE_THRESHOLD
             )
         except Exception as e:
             logger.error("Face capture failed: %s", e)
