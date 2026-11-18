@@ -13,7 +13,7 @@
 > **An end-to-end Cyber-Physical National Identity Verification and Access Control Platform coupling high-speed edge hardware (ESP32-S3, OV2640 camera DMA, Grow R307S optical fingerprint sensor) with an OpenCV LBPH facial recognition engine, Supabase PostgreSQL audit ledger, sovereign root operator governance, and standalone hardware booth kiosk isolation.**
 
 > [!NOTE]
-> **Complete Visual Demonstration Gallery:** For the complete 13-asset visual showcase—including full-resolution hardware station kiosk screens, dual-biometric enrollment studio, forensic security audit inspector, live ESP32-S3 FreeRTOS telemetry diagnostics, and physical silicon breadboard photographs—see the [Complete Visual Demonstration Gallery (Section 10)](#10-complete-visual-demonstration-gallery-all-13-assets).
+> **Complete Visual Demonstration Gallery:** For the complete 14-asset visual showcase—including full-resolution hardware station kiosk screens, dual-biometric enrollment studio, forensic security audit inspector, live ESP32-S3 FreeRTOS telemetry diagnostics, and physical silicon breadboard photographs—see the [Complete Visual Demonstration Gallery (Section 10)](#10-complete-visual-demonstration-gallery-all-14-assets).
 
 ---
 
@@ -33,7 +33,7 @@
 7. [Installation & Local Setup Guide](#7-installation--local-setup-guide)
 8. [Automated Verification & Operational Telemetry](#8-automated-verification--operational-telemetry)
 9. [Project & Repository Structure](#9-project--repository-structure)
-10. [Complete Visual Demonstration Gallery (All 13 Assets)](#10-complete-visual-demonstration-gallery-all-13-assets)
+10. [Complete Visual Demonstration Gallery (All 14 Assets)](#10-complete-visual-demonstration-gallery-all-14-assets)
 11. [Author & Contact Information](#11-author--contact-information)
 12. [License](#license)
 
@@ -373,7 +373,7 @@ NID-SecureGuard/
 │   └── esp32_secureguard/
 │       ├── esp32_secureguard.ino   # FreeRTOS dual-core tasks & camera DMA
 │       └── README.md               # Hardware wiring & flashing guide
-├── Images/                         # 13 Complete Visual Showcase Assets
+├── Images/                         # 14 Complete Visual Showcase Assets
 ├── .env.example                    # Environment variable template
 ├── .gitignore                      # Git artifact exclusions
 └── README.md                       # Master Technical Documentation
@@ -381,19 +381,24 @@ NID-SecureGuard/
 
 ---
 
-## 10. Complete Visual Demonstration Gallery (All 13 Assets)
+## 10. Complete Visual Demonstration Gallery (All 14 Assets)
 
 ### 10.1 Hardware Station Kiosk & Citizen Verification
-| Identity Verification Kiosk (Default Landing) | Biometric Enrollment Studio |
+| Identity Verification Kiosk (Standby & Prompt) | Biometric Clearance Granted (Decrypted Record) |
 | :---: | :---: |
-| ![Identity Verification Kiosk](Images/kiosk_verification.png) | ![Biometric Enrollment Studio](Images/kiosk_enrollment.png) |
-| *Standalone station booth with live camera HUD, R307S optical fingerprint prompt, and encrypted citizen profile card* | *3-step multi-modal citizen onboarding: biographical data, 5-frame LBPH facial capture, and optical fingerprint registration* |
+| ![Identity Verification Kiosk Standby](Images/kiosk_verification.png) | ![Biometric Clearance Granted](Images/kiosk_verification_granted.png) |
+| *Standalone station booth with live camera HUD, R307S optical fingerprint prompt, and encrypted citizen profile card* | *Successful dual-biometric convergence: live face match (61.6% confidence), R307S fingerprint match (Score 126), and decrypted citizen profile* |
 
-### 10.2 Central Command & Operator Governance
-| System Command Dashboard | Sovereign Operator Authorization Console |
+| Biometric Enrollment Studio (Step-by-Step Onboarding) |
+| :---: |
+| ![Biometric Enrollment Studio](Images/kiosk_enrollment.png) |
+| *3-step multi-modal citizen onboarding: biographical data, 5-frame LBPH facial capture, and optical fingerprint registration* |
+
+### 10.2 Central Command & Cloud Database Ledger
+| System Command Dashboard | Cloud Database Ledger Console |
 | :---: | :---: |
-| ![System Dashboard](Images/dashboard_overview.png) | ![Operator Approvals Console](Images/database_console.png) |
-| *Real-time biometric analytics, verification traffic charts, live ESP32 camera viewport, and FreeRTOS telemetry metrics* | *Master Root Administrator (`masud.nil74@gmail.com`) queue for approving, reviewing, or purging pending operator accounts* |
+| ![System Dashboard](Images/dashboard_overview.png) | ![Cloud Database Ledger Console](Images/database_console.png) |
+| *Real-time biometric analytics, verification traffic charts, live ESP32 camera viewport, and FreeRTOS telemetry metrics* | *Supabase PostgreSQL `security_logs` ledger detailing biometric confidence scores ($\tau$), NID bindings, and verification verdicts* |
 
 ### 10.3 Citizen Directory & Security Audit Intelligence
 | Verified Citizen Directory | Immutable Security Audit Ledger |
