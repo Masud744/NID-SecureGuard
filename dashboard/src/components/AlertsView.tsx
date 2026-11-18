@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Bell,
   AlertTriangle,
@@ -20,6 +20,7 @@ import {
   X,
   Eye,
   FileSpreadsheet,
+  RotateCcw,
 } from 'lucide-react'
 import { fetchLogs } from '../lib/api'
 import type { SecurityLog } from '../types'
@@ -41,98 +42,152 @@ export interface Incident {
 
 interface AlertsViewProps {
   onNavigate?: (tab: any) => void
+  onAlertCountChange?: (count: number) => void
 }
 
-export const AlertsView: React.FC<AlertsViewProps> = ({ onNavigate }) => {
-  const [incidents, setIncidents] = useState<Incident[]>([
-    {
-      id: 'INC-1092',
-      title: 'Biometric Discrepancy: Face Mismatch & Rejection',
-      description:
-        'Verification attempt for NID 1122334455667 failed LBPH distance threshold (score 125.9 > max 75.0). Access denied per dual-policy mandate.',
-      category: 'biometric',
-      severity: 'high',
-      subsystem: 'BIOMETRIC_LBPH',
-      affectedEntity: 'NID: 1122334455667',
-      timestamp: 'Today, 01:47:06 UTC',
-      resolved: false,
-      rootCause: 'Camera captured face distance exceeded algorithm confidence threshold (score 125.94).',
-      recommendation: 'Verify subject ambient lighting or prompt citizen to perform re-enrollment in Biometric Enrollment Studio.',
-    },
-    {
-      id: 'INC-1091',
-      title: 'Camera DMA Buffer Overflow Auto-Recovered',
-      description:
-        'ESP32 camera HAL driver stabilized frame queue with CAMERA_GRAB_WHEN_EMPTY policy. Frame buffer cleared without dropping telemetry.',
-      category: 'hardware',
-      severity: 'low',
-      subsystem: 'CAMERA_DMA',
-      affectedEntity: 'OV2640 DVP DMA',
-      timestamp: 'Today, 00:28:40 UTC',
-      resolved: false,
-      rootCause: 'High resolution frame capture caused transient buffer pressure in internal SRAM.',
-      recommendation: 'Ensure camera clock remains configured at 10MHz XCLK on ESP32-S3.',
-    },
-    {
-      id: 'INC-1089',
-      title: 'Tunnel Connection Established via Cloudflare',
-      description:
-        'ESP32 hardware node successfully established encrypted WebSocket/HTTPS reverse tunnel over local gateway bridge.',
-      category: 'network',
-      severity: 'low',
-      subsystem: 'TUNNEL_BRIDGE',
-      affectedEntity: 'Cloudflare Edge',
-      timestamp: 'Yesterday, 23:28:15 UTC',
-      resolved: true,
-      rootCause: 'Initial boot handshake established secure socket routing.',
-      recommendation: 'No action required. Telemetry link operating within standard latency margins.',
-    },
-  ])
+const RESOLVED_STORAGE_KEY = 'nid_secureguard_resolved_incident_ids'
+const ACTIVE_COUNT_KEY = 'nid_secureguard_active_alerts_count'
+
+function getStoredResolvedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(RESOLVED_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        return new Set(parsed)
+      }
+    }
+  } catch (e) {
+    console.error('Failed to read resolved incident storage:', e)
+  }
+  return new Set()
+}
+
+function saveStoredResolvedIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(RESOLVED_STORAGE_KEY, JSON.stringify(Array.from(ids)))
+  } catch (e) {
+    console.error('Failed to save resolved incident storage:', e)
+  }
+}
+
+export const AlertsView: React.FC<AlertsViewProps> = ({ onNavigate, onAlertCountChange }) => {
+  const [incidents, setIncidents] = useState<Incident[]>(() => {
+    const resolvedIds = getStoredResolvedIds()
+    return [
+      {
+        id: 'INC-1092',
+        title: 'Biometric Discrepancy: Face Mismatch & Rejection',
+        description:
+          'Verification attempt for NID 1122334455667 failed LBPH distance threshold (score 125.9 > max 75.0). Access denied per dual-policy mandate.',
+        category: 'biometric',
+        severity: 'high',
+        subsystem: 'BIOMETRIC_LBPH',
+        affectedEntity: 'NID: 1122334455667',
+        timestamp: 'Today, 01:47:06 UTC',
+        resolved: resolvedIds.has('INC-1092'),
+        rootCause: 'Camera captured face distance exceeded algorithm confidence threshold (score 125.94).',
+        recommendation: 'Verify subject ambient lighting or prompt citizen to perform re-enrollment in Biometric Enrollment Studio.',
+      },
+      {
+        id: 'INC-1091',
+        title: 'Camera DMA Buffer Overflow Auto-Recovered',
+        description:
+          'ESP32 camera HAL driver stabilized frame queue with CAMERA_GRAB_WHEN_EMPTY policy. Frame buffer cleared without dropping telemetry.',
+        category: 'hardware',
+        severity: 'low',
+        subsystem: 'CAMERA_DMA',
+        affectedEntity: 'OV2640 DVP DMA',
+        timestamp: 'Today, 00:28:40 UTC',
+        resolved: resolvedIds.has('INC-1091'),
+        rootCause: 'High resolution frame capture caused transient buffer pressure in internal SRAM.',
+        recommendation: 'Ensure camera clock remains configured at 10MHz XCLK on ESP32-S3.',
+      },
+      {
+        id: 'INC-1089',
+        title: 'Tunnel Connection Established via Cloudflare',
+        description:
+          'ESP32 hardware node successfully established encrypted WebSocket/HTTPS reverse tunnel over local gateway bridge.',
+        category: 'network',
+        severity: 'low',
+        subsystem: 'TUNNEL_BRIDGE',
+        affectedEntity: 'Cloudflare Edge',
+        timestamp: 'Yesterday, 23:28:15 UTC',
+        resolved: true,
+        rootCause: 'Initial boot handshake established secure socket routing.',
+        recommendation: 'No action required. Telemetry link operating within standard latency margins.',
+      },
+    ]
+  })
 
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'biometric' | 'hardware' | 'resolved'>('all')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
 
-  // Fetch real security logs from backend to append any real denied verifications as active incidents
+  // Sync active count to parent and localStorage
+  const syncActiveCount = useCallback((list: Incident[]) => {
+    const active = list.filter((i) => !i.resolved).length
+    try {
+      localStorage.setItem(ACTIVE_COUNT_KEY, String(active))
+    } catch {}
+    onAlertCountChange?.(active)
+  }, [onAlertCountChange])
+
+  // Fetch real security logs from backend and attach persistence
   const loadRecentAlarms = async () => {
     setIsLoading(true)
     try {
+      const resolvedIds = getStoredResolvedIds()
       const logs: SecurityLog[] = await fetchLogs(30)
       const deniedLogs = logs.filter((l) => l.access_decision === 'denied')
 
-      if (deniedLogs.length > 0) {
-        setIncidents((prev) => {
-          const existingIds = new Set(prev.map((i) => i.id))
-          const newIncidents: Incident[] = []
+      setIncidents((prev) => {
+        const existingMap = new Map<string, Incident>(prev.map((i) => [i.id, i]))
 
-          deniedLogs.forEach((log) => {
-            const shortId = 'INC-' + log.id.slice(0, 4).toUpperCase()
-            if (!existingIds.has(shortId)) {
-              newIncidents.push({
-                id: shortId,
-                title: `Biometric Security Alert: ${log.failure_reason || 'Verification Denied'}`,
-                description: `Subject presenting NID ${log.nid_number || 'Unknown'} failed security policy: ${
-                  log.failure_reason || 'Access rejected'
-                }. Face score: ${log.face_confidence?.toFixed(1) ?? 'N/A'}.`,
-                category: 'biometric',
-                severity: 'high',
-                subsystem: 'VERIFICATION_GATEWAY',
-                affectedEntity: log.nid_number ? `NID: ${log.nid_number}` : 'Unregistered Identity',
-                timestamp: new Date(log.created_at).toLocaleString(),
-                rawLogId: log.id,
-                resolved: false,
-                rootCause: `Dual policy rejection: ${log.failure_reason || 'Modality mismatch'}.`,
-                recommendation: 'Audit biometric credential log in Security Audit Logs.',
-              })
+        deniedLogs.forEach((log) => {
+          const shortId = 'INC-' + log.id.slice(0, 4).toUpperCase()
+          const isResolved = resolvedIds.has(shortId)
+
+          if (!existingMap.has(shortId)) {
+            existingMap.set(shortId, {
+              id: shortId,
+              title: `Biometric Security Alert: ${log.failure_reason || 'Verification Denied'}`,
+              description: `Subject presenting NID ${log.nid_number || 'Unknown'} failed security policy: ${
+                log.failure_reason || 'Access rejected'
+              }. Face score: ${log.face_confidence?.toFixed(1) ?? 'N/A'}.`,
+              category: 'biometric',
+              severity: 'high',
+              subsystem: 'VERIFICATION_GATEWAY',
+              affectedEntity: log.nid_number ? `NID: ${log.nid_number}` : 'Unregistered Identity',
+              timestamp: new Date(log.created_at).toLocaleString(),
+              rawLogId: log.id,
+              resolved: isResolved,
+              rootCause: `Dual policy rejection: ${log.failure_reason || 'Modality mismatch'}.`,
+              recommendation: 'Audit biometric credential log in Security Audit Logs.',
+            })
+          } else {
+            // Keep existing entity and ensure resolution matches persistent store
+            const existing = existingMap.get(shortId)!
+            if (isResolved) {
+              existing.resolved = true
             }
-          })
-
-          return [...newIncidents, ...prev]
+          }
         })
-      }
+
+        // Also ensure base items match stored resolution
+        existingMap.forEach((inc) => {
+          if (resolvedIds.has(inc.id)) {
+            inc.resolved = true
+          }
+        })
+
+        const updated = Array.from(existingMap.values())
+        syncActiveCount(updated)
+        return updated
+      })
     } catch {
-      // Keep existing incidents on error
+      // Keep state on failure
     } finally {
       setIsLoading(false)
     }
@@ -144,13 +199,54 @@ export const AlertsView: React.FC<AlertsViewProps> = ({ onNavigate }) => {
 
   const toggleResolve = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
-    setIncidents((prev) =>
-      prev.map((inc) => (inc.id === id ? { ...inc, resolved: !inc.resolved } : inc))
-    )
+    const resolvedIds = getStoredResolvedIds()
+
+    setIncidents((prev) => {
+      let nextResolved = false
+      const next = prev.map((inc) => {
+        if (inc.id === id) {
+          nextResolved = !inc.resolved
+          return { ...inc, resolved: nextResolved }
+        }
+        return inc
+      })
+
+      if (nextResolved) {
+        resolvedIds.add(id)
+      } else {
+        resolvedIds.delete(id)
+      }
+      saveStoredResolvedIds(resolvedIds)
+      syncActiveCount(next)
+      return next
+    })
   }
 
   const resolveAll = () => {
-    setIncidents((prev) => prev.map((inc) => ({ ...inc, resolved: true })))
+    const resolvedIds = getStoredResolvedIds()
+    setIncidents((prev) => {
+      const next = prev.map((inc) => {
+        resolvedIds.add(inc.id)
+        return { ...inc, resolved: true }
+      })
+      saveStoredResolvedIds(resolvedIds)
+      syncActiveCount(next)
+      return next
+    })
+  }
+
+  const resetAllIncidents = () => {
+    try {
+      localStorage.removeItem(RESOLVED_STORAGE_KEY)
+    } catch {}
+    setIncidents((prev) => {
+      const next = prev.map((inc) => ({
+        ...inc,
+        resolved: inc.id === 'INC-1089', // keep cloudflare tunnel as naturally resolved
+      }))
+      syncActiveCount(next)
+      return next
+    })
   }
 
   const exportCSV = () => {
@@ -249,7 +345,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({ onNavigate }) => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center space-x-2.5 self-start md:self-auto">
+        <div className="flex items-center space-x-2.5 self-start md:self-auto flex-wrap gap-y-2">
           <button
             onClick={loadRecentAlarms}
             disabled={isLoading}
@@ -259,6 +355,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({ onNavigate }) => {
             <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Scan Alarms</span>
           </button>
+
           <button
             onClick={exportCSV}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
@@ -266,13 +363,23 @@ export const AlertsView: React.FC<AlertsViewProps> = ({ onNavigate }) => {
             <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
             <span>Export Report</span>
           </button>
-          {activeCount > 0 && (
+
+          {activeCount > 0 ? (
             <button
               onClick={resolveAll}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-900 hover:bg-brand-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
             >
               <Check className="w-3.5 h-3.5 text-emerald-400" />
               <span>Resolve All</span>
+            </button>
+          ) : (
+            <button
+              onClick={resetAllIncidents}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer"
+              title="Reset resolved state for demonstration"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reopen Incidents</span>
             </button>
           )}
         </div>
@@ -429,9 +536,13 @@ export const AlertsView: React.FC<AlertsViewProps> = ({ onNavigate }) => {
         {filteredIncidents.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 text-center border border-slate-200/80 shadow-xs">
             <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-            <h3 className="font-bold text-slate-800 text-sm">No Incidents Matching Criteria</h3>
+            <h3 className="font-bold text-slate-800 text-sm">
+              {filter === 'active' ? 'All Incidents Resolved' : 'No Incidents Matching Criteria'}
+            </h3>
             <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              {search
+              {filter === 'active'
+                ? 'There are currently zero active alarms. All events have been investigated and marked resolved.'
+                : search
                 ? 'Try adjusting your search terms or filter selection.'
                 : 'All system parameters and biometric access policies are operating cleanly.'}
             </p>
@@ -654,7 +765,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({ onNavigate }) => {
                 </div>
               </div>
 
-              {/* Root Cause Analysis */}
+              {/* Root Cause Diagnostics */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                   Root Cause Diagnostics

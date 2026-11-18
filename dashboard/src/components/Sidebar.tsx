@@ -58,7 +58,7 @@ const navSections: NavSection[] = [
     category: 'Security & Audit',
     items: [
       { id: 'logs', label: 'Security Audit Logs', icon: FileText },
-      { id: 'alerts', label: 'Alerts & Incidents', icon: Bell, badge: 2 },
+      { id: 'alerts', label: 'Alerts & Incidents', icon: Bell },
     ],
   },
   {
@@ -75,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   isOpen,
   setIsOpen,
-  alertCount = 2,
+  alertCount = 0,
 }) => {
   return (
     <>

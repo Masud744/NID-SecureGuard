@@ -16,6 +16,14 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('kiosk')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [health, setHealth] = useState<HealthStatus | null>(null)
+  const [alertCount, setAlertCount] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem('nid_secureguard_active_alerts_count')
+      return raw !== null ? parseInt(raw, 10) : 0
+    } catch {
+      return 0
+    }
+  })
 
   // Poll hardware status every 5 seconds
   useEffect(() => {
@@ -37,6 +45,7 @@ export const App: React.FC = () => {
         setActiveTab={setActiveTab}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
+        alertCount={alertCount}
       />
 
       {/* Main App Canvas */}
@@ -64,7 +73,12 @@ export const App: React.FC = () => {
             />
           )}
           {activeTab === 'logs' && <AuditLogs />}
-          {activeTab === 'alerts' && <AlertsView onNavigate={setActiveTab} />}
+          {activeTab === 'alerts' && (
+            <AlertsView
+              onNavigate={setActiveTab}
+              onAlertCountChange={setAlertCount}
+            />
+          )}
           {activeTab === 'device' && <DeviceView health={health} />}
           {activeTab === 'settings' && <SettingsView />}
           {activeTab === 'roles' && <SettingsView isRoles />}
