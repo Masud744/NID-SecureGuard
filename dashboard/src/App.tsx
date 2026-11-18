@@ -1,20 +1,28 @@
 import React, { useState, useEffect } from 'react'
+import { Sidebar, type NavTab } from './components/Sidebar'
 import { Header } from './components/Header'
 import { VerificationKiosk } from './components/VerificationKiosk'
 import { RegistrationStudio } from './components/RegistrationStudio'
 import { AuditLogs } from './components/AuditLogs'
 import { CitizenDirectory } from './components/CitizenDirectory'
+import { DashboardView } from './components/DashboardView'
+import { AlertsView } from './components/AlertsView'
+import { DeviceView } from './components/DeviceView'
+import { SettingsView } from './components/SettingsView'
 import { fetchHealth } from './lib/api'
 import type { HealthStatus } from './types'
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'kiosk' | 'register' | 'logs' | 'citizens'>('kiosk')
+  const [activeTab, setActiveTab] = useState<NavTab>('kiosk')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [health, setHealth] = useState<HealthStatus | null>(null)
 
   // Poll hardware status every 5 seconds
   useEffect(() => {
     const check = () => {
-      fetchHealth().then(setHealth).catch(() => setHealth(null))
+      fetchHealth()
+        .then(setHealth)
+        .catch(() => setHealth(null))
     }
     check()
     const timer = setInterval(check, 5000)
@@ -22,33 +30,41 @@ export const App: React.FC = () => {
   }, [])
 
   return (
-    <div className="min-h-screen flex flex-col bg-dark-900 text-slate-100 font-sans selection:bg-emerald-500/20 selection:text-emerald-400">
-      {/* Top Header & Telemetry Bar */}
-      <Header health={health} activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="min-h-screen flex bg-canvas text-slate-800 font-sans selection:bg-brand-500/20 selection:text-brand-900">
+      {/* Left Navigation Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+      />
 
-      {/* Main View Port */}
-      <main className="flex-1 pb-16">
-        {activeTab === 'kiosk' && <VerificationKiosk />}
-        {activeTab === 'register' && <RegistrationStudio onRegistered={() => setActiveTab('citizens')} />}
-        {activeTab === 'logs' && <AuditLogs />}
-        {activeTab === 'citizens' && <CitizenDirectory />}
-      </main>
+      {/* Main App Canvas */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        {/* Top Header & Telemetry Bar */}
+        <Header
+          health={health}
+          activeTab={activeTab}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
 
-      {/* Footer */}
-      <footer className="border-t border-dark-700/60 bg-dark-850/40 py-6 text-xs text-slate-500 text-center">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>© 2026 NID SecureGuard — Dual-Biometric Identity Protection System</p>
-          <div className="flex items-center space-x-3 font-mono text-[11px] text-slate-400">
-            <span>ESP32-S3 FreeRTOS</span>
-            <span>•</span>
-            <span>OpenCV LBPH</span>
-            <span>•</span>
-            <span>R307S UART</span>
-            <span>•</span>
-            <span>FastAPI & Supabase</span>
-          </div>
-        </div>
-      </footer>
+        {/* Dynamic Main View */}
+        <main className="flex-1 pb-12">
+          {activeTab === 'dashboard' && (
+            <DashboardView health={health} onNavigate={setActiveTab} />
+          )}
+          {activeTab === 'kiosk' && <VerificationKiosk />}
+          {activeTab === 'registry' && <CitizenDirectory />}
+          {activeTab === 'registration' && (
+            <RegistrationStudio onRegistered={() => setActiveTab('registry')} />
+          )}
+          {activeTab === 'logs' && <AuditLogs />}
+          {activeTab === 'alerts' && <AlertsView />}
+          {activeTab === 'device' && <DeviceView health={health} />}
+          {activeTab === 'settings' && <SettingsView />}
+          {activeTab === 'roles' && <SettingsView isRoles />}
+        </main>
+      </div>
     </div>
   )
 }

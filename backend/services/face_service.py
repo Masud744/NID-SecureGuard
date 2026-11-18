@@ -95,34 +95,35 @@ class FaceService:
         captured = 0
 
         if self.bridge and self.bridge.is_online():
-            # Request batches over the tunnel so enrollment finishes in a few round-trips
-            for _ in range(3):
-                remaining = num_samples - captured
-                if remaining <= 0:
+            target = min(num_samples, 5)
+            for attempt in range(target * 2):
+                if captured >= target:
                     break
-                batch = await self.bridge.request_frames(
-                    count=min(remaining + 2, 10), timeout=35.0
-                )
-                for jpg in batch:
-                    if captured >= num_samples:
-                        break
-                    try:
-                        frame = self._decode_jpeg(jpg, "tunnel bridge")
-                        face_roi = self.detect_face(frame)
-                        if face_roi is None:
-                            continue
-                        samples.append(face_roi)
-                        captured += 1
-                        ok, encoded = cv2.imencode(".jpg", face_roi)
-                        if ok:
-                            file_path = f"{user_id}/sample_{captured}.jpg"
-                            supabase_client.storage.from_("face-samples").upload(
-                                file_path,
-                                encoded.tobytes(),
-                                file_options={"content-type": "image/jpeg", "upsert": "true"},
-                            )
-                    except Exception as e:
-                        logger.warning("Tunnel sample failed: %s", e)
+                try:
+                    frames = await self.bridge.request_frames(count=1, timeout=12.0)
+                    if not frames:
+                        continue
+                    frame = self._decode_jpeg(frames[0], "tunnel bridge")
+                    face_roi = self.detect_face(frame)
+                    if face_roi is None:
+                        logger.info("Tunnel frame did not detect face, retrying...")
+                        await asyncio.sleep(0.15)
+                        continue
+                    samples.append(face_roi)
+                    captured += 1
+                    ok, encoded = cv2.imencode(".jpg", face_roi)
+                    if ok:
+                        file_path = f"{user_id}/sample_{captured}.jpg"
+                        supabase_client.storage.from_("face-samples").upload(
+                            file_path,
+                            encoded.tobytes(),
+                            file_options={"content-type": "image/jpeg", "upsert": "true"},
+                        )
+                    await asyncio.sleep(0.15)
+                except DeviceOfflineError:
+                    raise
+                except Exception as e:
+                    logger.warning("Tunnel sample failed: %s", e)
         else:
             for attempt in range(num_samples * 2):
                 if captured >= num_samples:

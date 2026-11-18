@@ -47,6 +47,15 @@ class DeviceBridge:
     async def poll(self, heartbeat: dict, timeout: float = 12.0) -> dict | None:
         self.update_heartbeat(heartbeat)
         try:
+            # Skip any stale commands whose caller already timed out
+            while not self._commands.empty():
+                cmd = self._commands.get_nowait()
+                cmd_id = cmd.get("cmd_id")
+                fut = self._waiters.get(cmd_id)
+                if fut and not fut.done():
+                    self._last_seen = time.monotonic()
+                    return cmd
+
             cmd = await asyncio.wait_for(self._commands.get(), timeout=timeout)
             self._last_seen = time.monotonic()
             return cmd

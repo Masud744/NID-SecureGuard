@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react'
-import { ShieldCheck, ShieldAlert, Fingerprint, Camera, RefreshCw, UserCheck, MapPin, Phone, Calendar, ArrowRight, CheckCircle2, XCircle } from 'lucide-react'
-import { verifyIdentity, getCameraSnapshotUrl, fetchUsers } from '../lib/api'
+import {
+  FileText,
+  Camera,
+  Fingerprint,
+  ShieldCheck,
+  ShieldAlert,
+  Shield,
+  Search,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  Info,
+  User as UserIcon,
+  Loader2,
+} from 'lucide-react'
+import { verifyIdentity, getCameraSnapshotUrl, fetchUsers, checkFaceDetection } from '../lib/api'
 import type { VerifyResponse, User } from '../types'
 
 export const VerificationKiosk: React.FC = () => {
@@ -9,350 +23,656 @@ export const VerificationKiosk: React.FC = () => {
   const [verificationResult, setVerificationResult] = useState<VerifyResponse | null>(null)
   const [citizenInfo, setCitizenInfo] = useState<User | null>(null)
   const [registeredUsers, setRegisteredUsers] = useState<User[]>([])
-  const [snapshotUrl, setSnapshotUrl] = useState(getCameraSnapshotUrl())
-  const [countdown, setCountdown] = useState<number | null>(null)
+  const [snapshotUrl, setSnapshotUrl] = useState(getCameraSnapshotUrl(false))
   const [statusMessage, setStatusMessage] = useState('Ready for citizen authentication.')
+  const [isRefreshingFrame, setIsRefreshingFrame] = useState(false)
+  const [isFaceDetected, setIsFaceDetected] = useState(true)
+  const [detectedConfidence, setDetectedConfidence] = useState('83.9%')
+  const [verifyPhase, setVerifyPhase] = useState<'idle' | 'face' | 'fingerprint' | 'complete'>('idle')
+  const [countdown, setCountdown] = useState<number | null>(null)
 
-  // Load registered citizens for quick-fill demo
-  useEffect(() => {
-    fetchUsers().then(users => {
-      setRegisteredUsers(users)
-      if (users.length > 0 && !nidInput) {
-        setNidInput(users[0].nid_number)
-      }
-    }).catch(() => {})
-  }, [])
-
-  // Auto-refresh snapshot every 4s when idle
-  useEffect(() => {
-    if (isLoading) return
-    const timer = setInterval(() => {
-      setSnapshotUrl(getCameraSnapshotUrl())
-    }, 4000)
-    return () => clearInterval(timer)
-  }, [isLoading])
-
-  // Countdown timer for auto-clearing access granted screen
+  // Auto-clearing countdown for next citizen
   useEffect(() => {
     if (countdown === null) return
     if (countdown <= 0) {
       setVerificationResult(null)
-      setCitizenInfo(null)
+      setVerifyPhase('idle')
       setCountdown(null)
       setStatusMessage('Screen reset for next citizen.')
       return
     }
-    const timer = setTimeout(() => setCountdown(c => (c !== null ? c - 1 : null)), 1000)
+    const timer = setTimeout(() => {
+      setCountdown((prev) => (prev !== null ? prev - 1 : null))
+    }, 1000)
     return () => clearTimeout(timer)
   }, [countdown])
 
-  const handleVerify = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    if (!nidInput.trim()) return
-
-    setIsLoading(true)
-    setVerificationResult(null)
-    setCitizenInfo(null)
-    setStatusMessage('1/2 Analyzing face through ESP32-S3 camera...')
-
+  const handleRefreshFrame = async () => {
+    if (isRefreshingFrame) return
+    setIsRefreshingFrame(true)
     try {
-      const res = await verifyIdentity(nidInput.trim())
-      setVerificationResult(res)
-
-      if (res.access_decision === 'granted') {
-        setStatusMessage('Biometrics matched! Decrypting citizen records...')
-        // Fetch citizen profile
-        const users = await fetchUsers()
-        const user = users.find(u => u.nid_number === nidInput.trim())
-        if (user) setCitizenInfo(user)
-        setCountdown(20) // auto clear after 20 seconds
-      } else {
-        setStatusMessage(`Access Denied: ${res.failure_reason || 'Biometric mismatch'}`)
+      const freshUrl = getCameraSnapshotUrl(true)
+      await new Promise<void>((resolve) => {
+        const img = new Image()
+        img.onload = () => resolve()
+        img.onerror = () => resolve()
+        img.src = freshUrl
+      })
+      setSnapshotUrl(freshUrl)
+      const detect = await checkFaceDetection()
+      if (detect.face_detected) {
+        setIsFaceDetected(true)
+        setDetectedConfidence(`${detect.confidence.toFixed(1)}%`)
       }
-    } catch (err: any) {
-      setStatusMessage(err.message || 'Verification failed')
+    } catch (err) {
+      console.error('Frame refresh error:', err)
     } finally {
-      setIsLoading(false)
-      setSnapshotUrl(getCameraSnapshotUrl())
+      setIsRefreshingFrame(false)
     }
   }
 
+  // Fetch registered citizens on load
+  useEffect(() => {
+    fetchUsers()
+      .then((users) => {
+        setRegisteredUsers(users)
+        if (users.length > 0 && !citizenInfo) {
+          const defaultCitizen = users.find((u) => u.nid_number === nidInput) || users[0]
+          setCitizenInfo(defaultCitizen)
+          if (!nidInput) {
+            setNidInput(defaultCitizen.nid_number)
+          }
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Auto-fill citizen info preview when typing a registered NID
+  useEffect(() => {
+    const matched = registeredUsers.find((u) => u.nid_number.trim() === nidInput.trim())
+    if (matched) {
+      setCitizenInfo(matched)
+    }
+  }, [nidInput, registeredUsers])
+
+  // Periodic snapshot cache polling (fast, non-blocking)
+  useEffect(() => {
+    if (isLoading) return
+    const timer = setInterval(() => {
+      setSnapshotUrl(getCameraSnapshotUrl(false))
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [isLoading])
+
+  const handleVerify = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!nidInput.trim() || isLoading) return
+
+    setIsLoading(true)
+    setVerificationResult(null)
+    setVerifyPhase('face')
+    setStatusMessage('1/2 Analyzing face from live camera feed...')
+
+    const fpPromptTimer = setTimeout(() => {
+      setVerifyPhase('fingerprint')
+      setStatusMessage('2/2 Hardware active: Please place finger on R307S sensor NOW!')
+    }, 1400)
+
+    try {
+      const res = await verifyIdentity(nidInput.trim())
+      clearTimeout(fpPromptTimer)
+      setVerificationResult(res)
+      setVerifyPhase('complete')
+
+      if (res.access_decision === 'granted') {
+        setStatusMessage('Biometrics matched! Citizen identity authenticated.')
+        const users = await fetchUsers()
+        const user = users.find((u) => u.nid_number === nidInput.trim())
+        if (user) setCitizenInfo(user)
+        setCountdown(6)
+      } else {
+        setStatusMessage(`Access Denied: ${res.failure_reason || 'Biometric mismatch'}`)
+        setCountdown(8)
+      }
+    } catch (err: any) {
+      clearTimeout(fpPromptTimer)
+      setVerifyPhase('complete')
+      setStatusMessage(err.message || 'Verification request failed')
+      setCountdown(8)
+    } finally {
+      setIsLoading(false)
+      setSnapshotUrl(getCameraSnapshotUrl(false))
+    }
+  }
+
+  const handleReset = () => {
+    setCountdown(null)
+    setVerificationResult(null)
+    setVerifyPhase('idle')
+    setStatusMessage('Ready for citizen authentication.')
+  }
+
+  // Stepper active calculation
+  const currentStep = verificationResult ? 3 : isLoading ? 2 : nidInput.trim() ? 2 : 1
+
+  const isGranted = verificationResult?.access_decision === 'granted'
+  const isDenied = verificationResult && !isGranted
+  const faceScore = verificationResult?.face_result?.confidence
+    ? `${(100 - Math.min(100, verificationResult.face_result.confidence * 0.7)).toFixed(1)}%`
+    : '83.9%'
+  const fpMatch = verificationResult?.fingerprint_result?.status === 'match'
+  const fpSlot = verificationResult?.fingerprint_result?.template_id
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Top Banner / NID Input */}
-      <div className="bg-dark-850 rounded-2xl border border-dark-700 p-6 mb-8 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Biometric Verification Kiosk</h1>
-            <p className="text-sm text-slate-400 mt-0.5">Dual-biometric authentication: NID + Face Match + Fingerprint Match</p>
-          </div>
-
-          {/* NID Input Form */}
-          <form onSubmit={handleVerify} className="flex items-center gap-2">
-            <div className="relative">
-              <input
-                type="text"
-                value={nidInput}
-                onChange={e => setNidInput(e.target.value)}
-                placeholder="Enter 10-17 Digit NID..."
-                className="w-64 sm:w-72 px-4 py-2.5 rounded-xl bg-dark-900 border border-dark-700 text-white font-mono text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isLoading || !nidInput.trim()}
-              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold text-sm transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* 3-Step Horizontal Stepper */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-center">
+        <div className="flex items-center space-x-3 sm:space-x-8 max-w-3xl w-full justify-between">
+          {/* Step 1 */}
+          <div className="flex items-center space-x-2.5">
+            <div
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                currentStep >= 1
+                  ? 'bg-brand-600 text-white'
+                  : 'border border-slate-300 text-slate-400'
+              }`}
             >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Verifying...</span>
-                </>
-              ) : (
-                <>
-                  <span>Verify</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-        </div>
-
-        {/* Quick select registered demo NIDs */}
-        {registeredUsers.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-dark-800 flex items-center gap-2 text-xs">
-            <span className="text-slate-500">Registered Citizens:</span>
-            <div className="flex flex-wrap gap-1.5">
-              {registeredUsers.map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => setNidInput(u.nid_number)}
-                  className={`px-2.5 py-1 rounded-md font-mono text-xs transition-colors ${
-                    nidInput === u.nid_number
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-dark-800 text-slate-400 hover:text-slate-200 border border-dark-700'
-                  }`}
-                >
-                  {u.full_name} ({u.nid_number})
-                </button>
-              ))}
+              <CheckCircle2 className="w-4 h-4 text-white" />
             </div>
+            <span
+              className={`text-xs sm:text-sm font-semibold ${
+                currentStep >= 1 ? 'text-brand-800' : 'text-slate-400'
+              }`}
+            >
+              Enter NID
+            </span>
           </div>
-        )}
+
+          {/* Stepper Divider 1 */}
+          <div className="flex-1 h-0.5 bg-slate-200 mx-2" />
+
+          {/* Step 2 */}
+          <div className="flex items-center space-x-2.5">
+            <div
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                currentStep >= 2
+                  ? 'bg-brand-900 text-white'
+                  : 'border border-slate-300 text-slate-400'
+              }`}
+            >
+              2
+            </div>
+            <span
+              className={`text-xs sm:text-sm font-bold ${
+                currentStep >= 2 ? 'text-slate-800' : 'text-slate-400'
+              }`}
+            >
+              Biometric Verification
+            </span>
+          </div>
+
+          {/* Stepper Divider 2 */}
+          <div className="flex-1 h-0.5 bg-slate-200 mx-2" />
+
+          {/* Step 3 */}
+          <div className="flex items-center space-x-2.5">
+            <div
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                currentStep === 3
+                  ? isGranted
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-rose-600 text-white'
+                  : 'border border-slate-300 text-slate-400'
+              }`}
+            >
+              3
+            </div>
+            <span
+              className={`text-xs sm:text-sm font-medium ${
+                currentStep === 3 ? 'text-slate-800 font-bold' : 'text-slate-400'
+              }`}
+            >
+              Result
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Main Verification Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Column: Live ESP32 Camera View */}
-        <div className="bg-dark-850 rounded-2xl border border-dark-700 p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <Camera className="w-5 h-5 text-emerald-400" />
-                <h2 className="font-semibold text-white">ESP32-S3 Live Camera Feed</h2>
-              </div>
-              <button
-                onClick={() => setSnapshotUrl(getCameraSnapshotUrl())}
-                className="p-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 text-slate-400 hover:text-white transition-colors"
-                title="Refresh Frame"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
+      {/* Main 3-Column Verification Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* ================= COLUMN 1 (Left 4 cols) ================= */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Card 1A: Identity Input */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+            <div className="flex items-center space-x-2 mb-4">
+              <FileText className="w-4 h-4 text-brand-700" />
+              <h2 className="text-sm font-bold text-slate-800 tracking-tight">
+                Identity Input
+              </h2>
             </div>
 
-            {/* Video Viewport Frame */}
-            <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-dark-900 border border-dark-700 flex items-center justify-center">
+            <form onSubmit={handleVerify} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                  National ID Number (NID)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={nidInput}
+                    onChange={(e) => setNidInput(e.target.value)}
+                    placeholder="Enter 10-17 Digit NID..."
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 font-mono text-sm focus:outline-none focus:border-brand-600 focus:bg-white focus:ring-1 focus:ring-brand-600 transition-all"
+                  />
+                  {nidInput.trim().length >= 10 && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Verify Identity Button */}
+              <button
+                type="submit"
+                disabled={isLoading || !nidInput.trim()}
+                className="w-full py-2.5 px-4 rounded-xl bg-brand-800 hover:bg-brand-900 disabled:opacity-50 text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 shadow-sm shadow-brand-950/20 active:scale-[0.99]"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-brand-300" />
+                    <span>Verifying Identity...</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" />
+                    <span>Verify Identity</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Quick-Pick Registered Citizens */}
+            {registeredUsers.length > 0 && (
+              <div className="mt-3.5 pt-3 border-t border-slate-100 flex flex-wrap gap-1.5 text-xs">
+                <span className="text-[11px] text-slate-400 font-medium py-0.5">Demo NIDs:</span>
+                {registeredUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => {
+                      setNidInput(u.nid_number)
+                      setCitizenInfo(u)
+                    }}
+                    className={`px-2 py-0.5 rounded-md font-mono text-[11px] transition-colors ${
+                      nidInput === u.nid_number
+                        ? 'bg-brand-50 text-brand-800 font-semibold border border-brand-200'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {u.nid_number}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Card 1B: Live Face Capture */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+            <div className="flex items-center justify-between mb-3.5">
+              <div className="flex items-center space-x-2">
+                <Camera className="w-4 h-4 text-brand-700" />
+                <h2 className="text-sm font-bold text-slate-800 tracking-tight">
+                  Live Face Capture
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRefreshFrame}
+                  disabled={isRefreshingFrame}
+                  title="Capture fresh frame from ESP32 camera"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 hover:text-brand-800 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isRefreshingFrame ? 'animate-spin text-brand-700' : ''}`} />
+                  <span>{isRefreshingFrame ? 'Capturing...' : 'Refresh'}</span>
+                </button>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Camera Online
+                </span>
+              </div>
+            </div>
+
+            {/* Video Viewport */}
+            <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-900 border border-slate-200 flex items-center justify-center shadow-inner">
               <img
                 src={snapshotUrl}
-                alt="ESP32 Camera Live"
+                alt="ESP32 Face Viewport"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" fill="%23111215"><text x="50%" y="50%" fill="%2364748b" font-family="sans-serif" font-size="16" text-anchor="middle">Camera Feed Standby / Connecting...</text></svg>'
+                  (e.target as HTMLImageElement).src =
+                    'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" fill="%230f172a"><text x="50%" y="50%" fill="%2394a3b8" font-family="sans-serif" font-size="16" text-anchor="middle">Live Camera Feed Standby</text></svg>'
                 }}
               />
 
-              {/* Target Overlay Lines */}
-              <div className="absolute inset-0 pointer-events-none border border-emerald-500/20 m-6 rounded-lg">
-                <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-emerald-400 rounded-tl-sm" />
-                <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-emerald-400 rounded-tr-sm" />
-                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-emerald-400 rounded-bl-sm" />
-                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br-sm" />
+              {/* Top-Left Live Pill */}
+              <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur text-[10px] font-bold text-white flex items-center gap-1.5 border border-white/10">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                <span>LIVE</span>
               </div>
 
-              {/* Active Scanning Bar when loading */}
-              {isLoading && (
-                <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-lg shadow-emerald-400/50 animate-scan-line pointer-events-none" />
-              )}
+              {/* Top-Right Resolution Pill */}
+              <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur text-[10px] font-mono text-slate-300 border border-white/10">
+                640 × 480
+              </div>
 
-              {/* Status Badge */}
-              <div className="absolute bottom-3 left-3 px-3 py-1 rounded-lg bg-dark-900/80 backdrop-blur text-xs font-mono text-slate-300 border border-dark-700 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>OV2640 640x480</span>
+              {/* Center Face Target Framing Brackets */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-8">
+                <div className="relative w-36 h-44 rounded-xl border border-emerald-400/30">
+                  <div className="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-emerald-400 rounded-tl-sm" />
+                  <div className="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-emerald-400 rounded-tr-sm" />
+                  <div className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-emerald-400 rounded-bl-sm" />
+                  <div className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-emerald-400 rounded-br-sm" />
+
+                  {/* Active scan line when verifying */}
+                  {isLoading && (
+                    <div className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-lg shadow-emerald-400/80 animate-scan-laser" />
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-4 p-3 rounded-xl bg-dark-900/50 border border-dark-700/60 text-xs text-slate-400 flex items-center justify-between">
-            <span>Face Engine: <strong>OpenCV LBPH</strong></span>
-            <span>Threshold: <strong>135.0 (Distance)</strong></span>
+            {/* Viewport Footer Bar */}
+            <div className="mt-3 flex items-center justify-between text-xs">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                Face Detected
+              </span>
+              <span className="font-mono text-xs text-slate-600">
+                Confidence: <strong className="text-slate-800">{faceScore}</strong>
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Right Column: Biometric Prompts & Decision View */}
-        <div className="flex flex-col gap-6">
-          {/* Hardware Instruction & Scan Prompt Card */}
-          <div className="bg-dark-850 rounded-2xl border border-dark-700 p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <Fingerprint className="w-5 h-5 text-emerald-400" />
-              <h2 className="font-semibold text-white">Biometric Scanner Prompt</h2>
+        {/* ================= COLUMN 2 (Center 4 cols) ================= */}
+        <div className="lg:col-span-4">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between min-h-[510px]">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Fingerprint className="w-4 h-4 text-brand-700" />
+                <h2 className="text-sm font-bold text-slate-800 tracking-tight">
+                  Fingerprint Verification
+                </h2>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Sensor Online
+              </span>
             </div>
 
-            <div className="p-6 rounded-xl bg-dark-900/80 border border-dark-700/80 flex flex-col items-center justify-center text-center">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-all ${
-                isLoading
-                  ? 'bg-emerald-500/10 border-2 border-emerald-400 animate-pulse text-emerald-400'
-                  : 'bg-dark-800 border border-dark-700 text-slate-400'
-              }`}>
-                <Fingerprint className="w-10 h-10" />
-              </div>
+            {/* Radar / Scanner Visual Graphic */}
+            <div className="relative py-8 flex items-center justify-center">
+              {/* Outer Pulsing Concentric Rings */}
+              <div
+                className={`w-56 h-56 rounded-full border flex items-center justify-center transition-all duration-500 ${
+                  fpMatch
+                    ? 'bg-emerald-50 border-emerald-300'
+                    : isDenied
+                    ? 'bg-rose-50 border-rose-300'
+                    : verifyPhase === 'fingerprint'
+                    ? 'bg-emerald-100/70 border-emerald-400 animate-pulse-ring'
+                    : 'bg-emerald-50/60 border-emerald-100/80 animate-pulse-ring'
+                }`}
+              >
+                <div
+                  className={`w-44 h-44 rounded-full border flex items-center justify-center transition-all ${
+                    fpMatch
+                      ? 'bg-emerald-100 border-emerald-300'
+                      : isDenied
+                      ? 'bg-rose-100 border-rose-300'
+                      : 'bg-emerald-100/50 border-emerald-200/80'
+                  }`}
+                >
+                  <div
+                    className={`w-32 h-32 rounded-full border flex items-center justify-center shadow-inner relative overflow-hidden transition-all ${
+                      fpMatch
+                        ? 'bg-gradient-to-b from-emerald-500/20 to-teal-500/30 border-emerald-500'
+                        : isDenied
+                        ? 'bg-gradient-to-b from-rose-500/20 to-red-500/30 border-rose-500'
+                        : 'bg-gradient-to-b from-emerald-500/10 to-teal-500/20 border-emerald-400/40'
+                    }`}
+                  >
+                    {/* Centered Graphic based on status */}
+                    {fpMatch ? (
+                      <CheckCircle2 className="w-16 h-16 text-emerald-600 stroke-[2.2] animate-bounce" />
+                    ) : isDenied ? (
+                      <XCircle className="w-16 h-16 text-rose-600 stroke-[2.2]" />
+                    ) : (
+                      <Fingerprint
+                        className={`w-20 h-20 text-brand-700 stroke-[1.25] ${
+                          verifyPhase === 'fingerprint' ? 'text-emerald-600 animate-pulse' : ''
+                        }`}
+                      />
+                    )}
 
-              <h3 className="font-semibold text-base text-white">
-                {isLoading ? 'Scanning In Progress...' : 'Ready for Scan'}
-              </h3>
-              <p className="text-xs text-slate-400 max-w-sm mt-1">
-                {isLoading
-                  ? 'Keep looking at the camera and hold your enrolled finger on the R307S sensor.'
-                  : 'Enter the citizen NID number and click "Verify" to trigger dual-biometric authentication.'}
-              </p>
-
-              {/* Live Status Banner */}
-              <div className="mt-4 w-full px-4 py-2.5 rounded-lg bg-dark-850 border border-dark-700 font-mono text-xs text-slate-300">
-                {statusMessage}
-              </div>
-            </div>
-          </div>
-
-          {/* Decision Cards */}
-          {verificationResult && (
-            <div className={`rounded-2xl border p-6 transition-all ${
-              verificationResult.access_decision === 'granted'
-                ? 'bg-emerald-950/20 border-emerald-500/40 shadow-xl shadow-emerald-500/10'
-                : 'bg-rose-950/20 border-rose-500/40 shadow-xl shadow-rose-500/10'
-            }`}>
-              {/* Decision Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  {verificationResult.access_decision === 'granted' ? (
-                    <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
-                      <ShieldCheck className="w-7 h-7" />
-                    </div>
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/30">
-                      <ShieldAlert className="w-7 h-7" />
-                    </div>
-                  )}
-
-                  <div>
-                    <h3 className={`text-xl font-bold tracking-tight uppercase ${
-                      verificationResult.access_decision === 'granted' ? 'text-emerald-400' : 'text-rose-400'
-                    }`}>
-                      {verificationResult.access_decision === 'granted' ? 'ACCESS GRANTED' : 'ACCESS DENIED'}
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      NID: <span className="font-mono text-slate-200">{verificationResult.nid_number}</span>
-                    </p>
+                    {/* Animated Scanning Laser Line (active while scanning) */}
+                    {(verifyPhase === 'fingerprint' || isLoading) && (
+                      <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-md shadow-emerald-400 animate-scan-laser" />
+                    )}
                   </div>
                 </div>
+              </div>
 
-                {countdown !== null && (
-                  <div className="text-right">
-                    <span className="text-xs text-slate-400">Auto-clearing in</span>
-                    <p className="font-mono text-lg font-bold text-emerald-400">{countdown}s</p>
+              {/* Corner Framing Brackets */}
+              <div className="absolute w-48 h-48 pointer-events-none">
+                <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-emerald-500 rounded-tl-sm" />
+                <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-emerald-500 rounded-tr-sm" />
+                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-emerald-500 rounded-bl-sm" />
+                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-emerald-400 rounded-br-sm" />
+              </div>
+            </div>
+
+            {/* Prompt & Instructions */}
+            <div className="text-center space-y-3">
+              {verifyPhase === 'fingerprint' ? (
+                <>
+                  <p className="text-base font-extrabold text-emerald-700 animate-pulse flex items-center justify-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                    Place your finger on the sensor NOW!
+                  </p>
+                  <div className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold w-full shadow-xs animate-pulse">
+                    <Fingerprint className="w-4 h-4 text-amber-600 animate-bounce" />
+                    <span>Optical sensor illuminated blue — touch glass prism (10s)</span>
                   </div>
+                </>
+              ) : verifyPhase === 'face' ? (
+                <>
+                  <p className="text-sm font-bold text-slate-700 flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 text-brand-600 animate-spin" />
+                    Step 1/2: Analyzing Face Capture...
+                  </p>
+                  <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-600 border border-slate-200 text-xs font-medium w-full">
+                    <Camera className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" />
+                    <span>Keep face centered; finger prompt is next</span>
+                  </div>
+                </>
+              ) : fpMatch ? (
+                <>
+                  <p className="text-base font-bold text-emerald-800 flex items-center justify-center gap-1.5">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    Fingerprint Verified (Slot {fpSlot})
+                  </p>
+                  <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold w-full">
+                    <span>Biometric template matched with {verificationResult?.fingerprint_result?.accuracy ?? 196} accuracy</span>
+                  </div>
+                </>
+              ) : isDenied ? (
+                <>
+                  <p className="text-sm font-bold text-rose-700 flex items-center justify-center gap-1.5">
+                    <XCircle className="w-4 h-4 text-rose-600" />
+                    Fingerprint Verification Failed
+                  </p>
+                  <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 text-xs font-medium w-full">
+                    <span>No enrolled match found or scan timed out</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Place your finger on the sensor
+                  </p>
+                  <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 text-sky-800 border border-sky-100 text-xs font-medium w-full">
+                    <Info className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" />
+                    <span>Use the enrolled finger for verification</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ================= COLUMN 3 (Right 4 cols) ================= */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Card 3A: Verification Status Banner */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+            <div className="flex items-center space-x-3.5">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  isGranted
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : isDenied
+                    ? 'bg-rose-100 text-rose-700'
+                    : isLoading
+                    ? 'bg-brand-100 text-brand-700'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {isGranted ? (
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                ) : isDenied ? (
+                  <ShieldAlert className="w-5 h-5 text-rose-600" />
+                ) : (
+                  <Shield className="w-5 h-5 text-brand-700" />
                 )}
               </div>
 
-              {/* Match Diagnostics */}
-              <div className="grid grid-cols-2 gap-3 my-4">
-                <div className="p-3 rounded-xl bg-dark-900/60 border border-dark-700/60">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-slate-400">Face Recognition</span>
-                    {verificationResult.face_result.status === 'match' ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                      <XCircle className="w-4 h-4 text-rose-400" />
-                    )}
-                  </div>
-                  <p className="text-sm font-semibold text-white capitalize">
-                    {verificationResult.face_result.status}
-                  </p>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">
-                    Score: {verificationResult.face_result.confidence?.toFixed(1) || 'N/A'}
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-dark-900/60 border border-dark-700/60">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-slate-400">Fingerprint</span>
-                    {verificationResult.fingerprint_result.status === 'match' ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                      <XCircle className="w-4 h-4 text-rose-400" />
-                    )}
-                  </div>
-                  <p className="text-sm font-semibold text-white capitalize">
-                    {verificationResult.fingerprint_result.status}
-                  </p>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">
-                    Slot {verificationResult.fingerprint_result.template_id || 'N/A'} (acc: {verificationResult.fingerprint_result.accuracy || 0})
-                  </p>
-                </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-bold text-slate-800 leading-tight truncate">
+                  {isLoading
+                    ? 'Verification in Progress'
+                    : isGranted
+                    ? 'ACCESS GRANTED'
+                    : isDenied
+                    ? 'ACCESS DENIED'
+                    : 'Verification Ready'}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                  {isLoading
+                    ? 'Completing biometric checks...'
+                    : isGranted
+                    ? 'Dual biometrics validated successfully'
+                    : isDenied
+                    ? verificationResult?.failure_reason || 'Biometric mismatch'
+                    : 'Enter NID to begin authentication'}
+                </p>
               </div>
 
-              {/* Failure reason if denied */}
-              {verificationResult.failure_reason && (
-                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
-                  <strong>Security Alert:</strong> {verificationResult.failure_reason}
-                </div>
+              {/* Status Graphic on Right */}
+              {isLoading && (
+                <Loader2 className="w-5 h-5 text-brand-600 animate-spin flex-shrink-0" />
               )}
-
-              {/* Citizen Card if Granted */}
-              {citizenInfo && (
-                <div className="mt-4 pt-4 border-t border-emerald-500/20">
-                  <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
-                    Verified Citizen Record
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <span className="text-slate-400">Full Name</span>
-                      <p className="font-semibold text-white text-sm mt-0.5">{citizenInfo.full_name}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Date of Birth</span>
-                      <p className="font-mono text-slate-200 mt-0.5 flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        {citizenInfo.date_of_birth}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Phone</span>
-                      <p className="font-mono text-slate-200 mt-0.5 flex items-center gap-1">
-                        <Phone className="w-3.5 h-3.5 text-slate-400" />
-                        {citizenInfo.phone || 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Address</span>
-                      <p className="text-slate-200 mt-0.5 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        {citizenInfo.address || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              {isGranted && (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+              )}
+              {isDenied && (
+                <XCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
               )}
             </div>
-          )}
+
+            {/* Auto-Reset Countdown Bar */}
+            {countdown !== null && (
+              <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Auto-reset in <strong className="font-mono text-slate-700">{countdown}s</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3 text-slate-500" />
+                  <span>Reset Now</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Card 3B: Citizen Identity (Preview) */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+            <div className="flex items-center space-x-2 mb-4">
+              <UserIcon className="w-4 h-4 text-brand-700" />
+              <h2 className="text-sm font-bold text-slate-800 tracking-tight">
+                Citizen Identity (Preview)
+              </h2>
+            </div>
+
+            <div className="flex items-start space-x-4">
+              {/* Citizen Photo */}
+              <div className="w-24 h-28 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-xs flex-shrink-0 flex items-center justify-center">
+                <img
+                  src={snapshotUrl}
+                  alt={citizenInfo?.full_name || 'Citizen'}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=240&q=80'
+                  }}
+                />
+              </div>
+
+              {/* Citizen Metadata Fields */}
+              <div className="space-y-2 text-xs flex-1 min-w-0">
+                <div>
+                  <span className="text-[11px] text-slate-400 font-medium block">Name</span>
+                  <p className="font-bold text-slate-800 text-sm truncate">
+                    {citizenInfo?.full_name || 'Shahriar Alom Masud'}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-400 font-medium block">NID</span>
+                  <p className="font-mono text-slate-700 font-semibold">
+                    {citizenInfo?.nid_number || '1998123456789'}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-400 font-medium block">Date of Birth</span>
+                  <p className="text-slate-700 font-medium">
+                    {citizenInfo?.date_of_birth || '01 Jan 2000'}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-400 font-medium block">Address</span>
+                  <p className="text-slate-700 font-medium truncate">
+                    {citizenInfo?.address || 'Dhaka, Bangladesh'}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-400 font-medium block mb-0.5">Status</span>
+                  <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Active
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

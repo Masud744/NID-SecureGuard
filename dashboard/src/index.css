@@ -3,38 +3,63 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    border-color: #252932;
-  }
   body {
-    background-color: #0f1013;
-    color: #f1f5f9;
+    background-color: #f4f7f6;
+    color: #1e293b;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
-/* Custom glowing pulse for active scanning */
-@keyframes scanner-line {
-  0% { top: 0%; opacity: 0.8; }
-  50% { opacity: 1; }
-  100% { top: 100%; opacity: 0.8; }
+@keyframes scan-laser {
+  0% {
+    top: 10%;
+    opacity: 0.9;
+  }
+  50% {
+    top: 85%;
+    opacity: 1;
+  }
+  100% {
+    top: 10%;
+    opacity: 0.9;
+  }
 }
 
-.animate-scan-line {
-  animation: scanner-line 2s ease-in-out infinite alternate;
+.animate-scan-laser {
+  animation: scan-laser 2.4s ease-in-out infinite;
 }
 
-/* Custom scrollbars */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 3s ease-in-out infinite;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #111215;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #252932;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #323743;
+  background: #94a3b8;
 }
+

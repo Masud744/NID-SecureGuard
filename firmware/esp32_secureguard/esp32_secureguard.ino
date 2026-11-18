@@ -1,25 +1,31 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <esp_camera.h>
 #include <Adafruit_Fingerprint.h>
 
+#if __has_include("credentials.h")
+#include "credentials.h"
+#else
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 const char* BACKEND_URL   = "http://YOUR_BACKEND_IP:8000";
+#endif
 
-#define CAM_XCLK   10
-#define CAM_SIOD   40
-#define CAM_SIOC   39
-#define CAM_Y9     48
-#define CAM_Y8     11
-#define CAM_Y7     12
-#define CAM_Y6     14
-#define CAM_Y5     16
-#define CAM_Y4     18
-#define CAM_Y3     17
-#define CAM_Y2     15
-#define CAM_VSYNC  38
-#define CAM_HREF   47
+#define CAM_XCLK   15
+#define CAM_SIOD   4
+#define CAM_SIOC   5
+#define CAM_Y9     16
+#define CAM_Y8     17
+#define CAM_Y7     18
+#define CAM_Y6     12
+#define CAM_Y5     10
+#define CAM_Y4     8
+#define CAM_Y3     9
+#define CAM_Y2     11
+#define CAM_VSYNC  6
+#define CAM_HREF   7
 #define CAM_PCLK   13
 #define CAM_PWDN   -1
 #define CAM_RESET  -1
@@ -104,18 +110,18 @@ static bool initCamera() {
   cfg.pin_sccb_scl = CAM_SIOC;
   cfg.pin_pwdn     = CAM_PWDN;
   cfg.pin_reset    = CAM_RESET;
-  cfg.xclk_freq_hz = 20000000;
+  cfg.xclk_freq_hz = 10000000;
   cfg.pixel_format = PIXFORMAT_JPEG;
   cfg.frame_size   = FRAMESIZE_VGA;
-  cfg.jpeg_quality = 10;
+  cfg.jpeg_quality = 16;
   cfg.fb_location  = CAMERA_FB_IN_PSRAM;
-  cfg.fb_count     = 2;
-  cfg.grab_mode    = CAMERA_GRAB_LATEST;
+  cfg.fb_count     = 1;
+  cfg.grab_mode    = CAMERA_GRAB_WHEN_EMPTY;
 
   if (!psramFound()) {
     cfg.fb_location  = CAMERA_FB_IN_DRAM;
     cfg.fb_count     = 1;
-    cfg.jpeg_quality = 14;
+    cfg.jpeg_quality = 16;
   }
 
   esp_err_t err = esp_camera_init(&cfg);
@@ -145,11 +151,25 @@ bool enrollFingerprint(uint16_t templatePosition) {
   xSemaphoreTake(serialMutex, portMAX_DELAY);
   Serial.printf("Enrolling template %u, waiting for first scan\n", templatePosition);
 
-  if (!waitForFinger(10000) || finger.image2Tz(1) != FINGERPRINT_OK) {
+  // Turn optical blue LED ON for scan 1
+  finger.LEDcontrol(true);
+  finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_BLUE);
+  digitalWrite(LED_GREEN, HIGH);
+
+  bool firstOk = waitForFinger(10000) && (finger.image2Tz(1) == FINGERPRINT_OK);
+
+  // Turn optical LED OFF / prompt lift
+  finger.LEDcontrol(false);
+  finger.LEDcontrol(FINGERPRINT_LED_OFF, 0, FINGERPRINT_LED_BLUE);
+  digitalWrite(LED_GREEN, LOW);
+
+  if (!firstOk) {
     Serial.println("First scan failed or timed out");
     xSemaphoreGive(serialMutex);
     return false;
   }
+
+  beep(1);
 
   // Wait for finger lift so the second scan isn't a duplicate of the first
   unsigned long liftStart = millis();
@@ -159,7 +179,18 @@ bool enrollFingerprint(uint16_t templatePosition) {
   vTaskDelay(pdMS_TO_TICKS(500));
 
   Serial.println("Place the same finger again");
-  if (!waitForFinger(10000) || finger.image2Tz(2) != FINGERPRINT_OK) {
+  // Turn optical blue LED ON for scan 2
+  finger.LEDcontrol(true);
+  finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_BLUE);
+  digitalWrite(LED_GREEN, HIGH);
+
+  bool secondOk = waitForFinger(10000) && (finger.image2Tz(2) == FINGERPRINT_OK);
+
+  finger.LEDcontrol(false);
+  finger.LEDcontrol(FINGERPRINT_LED_OFF, 0, FINGERPRINT_LED_BLUE);
+  digitalWrite(LED_GREEN, LOW);
+
+  if (!secondOk) {
     Serial.println("Second scan failed or timed out");
     xSemaphoreGive(serialMutex);
     return false;
@@ -191,7 +222,19 @@ FpResult verifyFingerprint() {
 
   xSemaphoreTake(serialMutex, portMAX_DELAY);
 
-  if (!waitForFinger(10000)) {
+  // Turn on optical sensor blue LED and status green LED so user clearly sees sensor is active!
+  finger.LEDcontrol(true);
+  finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_BLUE);
+  digitalWrite(LED_GREEN, HIGH);
+
+  bool detected = waitForFinger(10000);
+
+  // Turn off LEDs immediately after scan
+  finger.LEDcontrol(false);
+  finger.LEDcontrol(FINGERPRINT_LED_OFF, 0, FINGERPRINT_LED_BLUE);
+  digitalWrite(LED_GREEN, LOW);
+
+  if (!detected) {
     snprintf(res.message, sizeof(res.message), "no finger detected");
     xSemaphoreGive(serialMutex);
     return res;
@@ -384,26 +427,41 @@ static void handleStatus() {
 void wifiManagerTask(void *param) {
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
+  WiFi.setSleep(false);
 
   for (;;) {
     if (WiFi.status() != WL_CONNECTED) {
       wifiConnected = false;
       xEventGroupClearBits(systemEvents, EVT_WIFI_CONNECTED);
 
-      Serial.printf("Connecting to %s...\n", WIFI_SSID);
+      Serial.printf("Connecting to WiFi: %s...\n", WIFI_SSID);
       WiFi.disconnect();
+      vTaskDelay(pdMS_TO_TICKS(200));
       WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-      for (int i = 0; i < 20 && WiFi.status() != WL_CONNECTED; i++) {
+      for (int i = 0; i < 30 && WiFi.status() != WL_CONNECTED; i++) {
         vTaskDelay(pdMS_TO_TICKS(500));
       }
 
       if (WiFi.status() == WL_CONNECTED) {
         wifiConnected = true;
         xEventGroupSetBits(systemEvents, EVT_WIFI_CONNECTED);
-        Serial.printf("WiFi connected, IP: %s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("WiFi connected! IP: %s, RSSI: %d dBm\n",
+                      WiFi.localIP().toString().c_str(), WiFi.RSSI());
       } else {
-        Serial.println("WiFi connection failed, retrying in 5s");
+        Serial.println("WiFi connection failed. Scanning 2.4GHz networks in range...");
+        int n = WiFi.scanNetworks();
+        if (n == 0) {
+          Serial.println("  No 2.4GHz WiFi networks found nearby.");
+        } else {
+          Serial.printf("  Found %d networks:\n", n);
+          for (int i = 0; i < n; ++i) {
+            Serial.printf("    [%d] SSID: '%s' | RSSI: %d dBm | Ch: %d | Enc: %d\n",
+                          i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i), WiFi.encryptionType(i));
+          }
+        }
+        Serial.println("Note: ESP32 only supports 2.4GHz. If using mobile hotspot, ensure AP Band is set to 2.4GHz.");
+        Serial.println("Retrying in 5s...\n");
       }
     }
     vTaskDelay(pdMS_TO_TICKS(5000));
@@ -411,15 +469,28 @@ void wifiManagerTask(void *param) {
 }
 
 void cameraStreamTask(void *param) {
+  // Wait for Wi-Fi and power rails to stabilize before initializing camera
   xEventGroupWaitBits(systemEvents, EVT_WIFI_CONNECTED, pdFALSE, pdTRUE, portMAX_DELAY);
+  vTaskDelay(pdMS_TO_TICKS(500));
 
-  if (!initCamera()) {
+  bool ok = false;
+  for (int attempt = 1; attempt <= 3; attempt++) {
+    if (initCamera()) {
+      ok = true;
+      break;
+    }
+    Serial.printf("Camera init attempt %d failed, retrying in 1s...\n", attempt);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+
+  if (!ok) {
     Serial.println("Camera unavailable, stream server not started");
     vTaskSuspend(NULL);
   }
 
   cameraReady = true;
   xEventGroupSetBits(systemEvents, EVT_CAMERA_READY);
+  Serial.println("OV2640 camera ready, starting stream server");
 
   const char* headers[] = { "Accept" };
   streamServer.collectHeaders(headers, 1);
@@ -430,7 +501,7 @@ void cameraStreamTask(void *param) {
 
   for (;;) {
     streamServer.handleClient();
-    vTaskDelay(pdMS_TO_TICKS(2));
+    vTaskDelay(pdMS_TO_TICKS(25));
   }
 }
 
@@ -446,7 +517,7 @@ void httpServerTask(void *param) {
 
   for (;;) {
     apiServer.handleClient();
-    vTaskDelay(pdMS_TO_TICKS(2));
+    vTaskDelay(pdMS_TO_TICKS(25));
   }
 }
 
@@ -556,6 +627,206 @@ void watchdogTask(void *param) {
   }
 }
 
+static String jsonStringField(const String &body, const char *key) {
+  String needle = String("\"") + key + "\":\"";
+  int start = body.indexOf(needle);
+  if (start < 0) return "";
+  start += needle.length();
+  int end = body.indexOf('"', start);
+  return (end > start) ? body.substring(start, end) : "";
+}
+
+static int jsonIntField(const String &body, const char *key, int fallback) {
+  String needle = String("\"") + key + "\":";
+  int start = body.indexOf(needle);
+  if (start < 0) return fallback;
+  start += needle.length();
+  while (start < static_cast<int>(body.length()) && body[start] == ' ') {
+    start++;
+  }
+  int end = start;
+  while (end < static_cast<int>(body.length()) &&
+         (isDigit(body[end]) || body[end] == '-')) {
+    end++;
+  }
+  return (end > start) ? body.substring(start, end).toInt() : fallback;
+}
+
+static bool beginBackendRequest(HTTPClient &http, WiFiClientSecure &tls,
+                                WiFiClient &plain, const String &url,
+                                uint16_t timeoutMs) {
+  http.setTimeout(timeoutMs);
+  if (url.startsWith("https://")) {
+    tls.setInsecure();
+    return http.begin(tls, url);
+  }
+  return http.begin(plain, url);
+}
+
+static void postBridgeResult(const String &baseUrl, const String &cmdId,
+                             bool success, uint16_t templateId,
+                             uint16_t confidence, const char *message) {
+  WiFiClientSecure tls;
+  WiFiClient plain;
+  HTTPClient http;
+  String url = baseUrl + "/api/v1/device/result";
+
+  if (!beginBackendRequest(http, tls, plain, url, 10000)) {
+    return;
+  }
+  http.addHeader("Content-Type", "application/json");
+
+  char body[256];
+  snprintf(body, sizeof(body),
+           "{\"cmd_id\":\"%s\",\"success\":%s,\"template_id\":%u,"
+           "\"confidence\":%u,\"message\":\"%s\"}",
+           cmdId.c_str(),
+           success ? "true" : "false",
+           templateId,
+           confidence,
+           message);
+  http.POST(reinterpret_cast<uint8_t *>(body), strlen(body));
+  http.end();
+}
+
+static void handleBridgeCapture(const String &baseUrl, const String &cmdId, int count) {
+  if (!cameraReady) {
+    postBridgeResult(baseUrl, cmdId, false, 0, 0, "camera not ready");
+    return;
+  }
+
+  if (count < 1) count = 1;
+  if (count > 20) count = 20;
+
+  // Discard one buffered frame so captures reflect the current view
+  camera_fb_t *stale = esp_camera_fb_get();
+  if (stale) {
+    esp_camera_fb_return(stale);
+  }
+
+  int sent = 0;
+  for (int i = 0; i < count; i++) {
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb) {
+      vTaskDelay(pdMS_TO_TICKS(100));
+      continue;
+    }
+
+    WiFiClientSecure tls;
+    WiFiClient plain;
+    HTTPClient http;
+    String url = baseUrl + "/api/v1/device/frame?cmd_id=" + cmdId;
+    if (beginBackendRequest(http, tls, plain, url, 15000)) {
+      http.addHeader("Content-Type", "image/jpeg");
+      int code = http.POST(fb->buf, fb->len);
+      if (code >= 200 && code < 300) {
+        sent++;
+      }
+      http.end();
+    }
+    esp_camera_fb_return(fb);
+    if (i + 1 < count) {
+      vTaskDelay(pdMS_TO_TICKS(150));
+    }
+  }
+
+  if (sent == 0) {
+    postBridgeResult(baseUrl, cmdId, false, 0, 0, "frame upload failed");
+  }
+}
+
+static void handleBridgeFingerprint(const String &baseUrl, const String &cmdId,
+                                    CommandType type, uint16_t templateId) {
+  if (!fpSensorReady) {
+    postBridgeResult(baseUrl, cmdId, false, 0, 0, "fingerprint sensor not ready");
+    return;
+  }
+
+  FpResult stale;
+  while (xQueueReceive(resultQueue, &stale, 0) == pdTRUE) {}
+
+  FpCommand cmd = {type, templateId};
+  if (xQueueSend(commandQueue, &cmd, pdMS_TO_TICKS(1000)) != pdTRUE) {
+    postBridgeResult(baseUrl, cmdId, false, 0, 0, "command queue full");
+    return;
+  }
+
+  uint32_t waitMs = (type == CMD_ENROLL) ? 30000 : 15000;
+  FpResult res;
+  if (xQueueReceive(resultQueue, &res, pdMS_TO_TICKS(waitMs)) != pdTRUE) {
+    postBridgeResult(baseUrl, cmdId, false, 0, 0, "fingerprint timeout");
+    return;
+  }
+
+  postBridgeResult(baseUrl, cmdId, res.success, res.templateId, res.confidence, res.message);
+}
+
+void backendBridgeTask(void *param) {
+  String baseUrl(BACKEND_URL);
+  while (baseUrl.endsWith("/")) {
+    baseUrl.remove(baseUrl.length() - 1);
+  }
+
+  if (baseUrl.length() == 0 || baseUrl.indexOf("YOUR_BACKEND_IP") >= 0) {
+    Serial.println("Backend bridge disabled (BACKEND_URL not configured)");
+    vTaskDelete(NULL);
+    return;
+  }
+
+  Serial.printf("Backend bridge targeting %s\n", baseUrl.c_str());
+
+  for (;;) {
+    xEventGroupWaitBits(systemEvents, EVT_WIFI_CONNECTED, pdFALSE, pdTRUE, portMAX_DELAY);
+
+    WiFiClientSecure tls;
+    WiFiClient plain;
+    HTTPClient http;
+    String pollUrl = baseUrl + "/api/v1/device/poll";
+
+    if (!beginBackendRequest(http, tls, plain, pollUrl, 25000)) {
+      vTaskDelay(pdMS_TO_TICKS(3000));
+      continue;
+    }
+
+    http.addHeader("Content-Type", "application/json");
+    char hb[220];
+    snprintf(hb, sizeof(hb),
+             "{\"camera\":%s,\"fingerprint\":%s,\"free_heap\":%lu,"
+             "\"free_psram\":%lu,\"ip\":\"%s\"}",
+             cameraReady ? "true" : "false",
+             fpSensorReady ? "true" : "false",
+             static_cast<unsigned long>(esp_get_free_heap_size()),
+             static_cast<unsigned long>(ESP.getFreePsram()),
+             WiFi.localIP().toString().c_str());
+
+    int code = http.POST(reinterpret_cast<uint8_t *>(hb), strlen(hb));
+    String resp = (code == 200) ? http.getString() : "";
+    http.end();
+
+    if (code != 200) {
+      Serial.printf("Bridge poll failed (HTTP %d), retrying\n", code);
+      vTaskDelay(pdMS_TO_TICKS(3000));
+      continue;
+    }
+
+    String cmdId = jsonStringField(resp, "cmd_id");
+    String cmdType = jsonStringField(resp, "type");
+    if (cmdId.length() == 0 || cmdType.length() == 0) {
+      continue;
+    }
+
+    if (cmdType == "capture") {
+      int count = jsonIntField(resp, "count", 1);
+      handleBridgeCapture(baseUrl, cmdId, count);
+    } else if (cmdType == "enroll") {
+      int tid = jsonIntField(resp, "template_id", 1);
+      handleBridgeFingerprint(baseUrl, cmdId, CMD_ENROLL, static_cast<uint16_t>(tid));
+    } else if (cmdType == "verify") {
+      handleBridgeFingerprint(baseUrl, cmdId, CMD_VERIFY, 0);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("NID SecureGuard booting...");
@@ -572,10 +843,11 @@ void setup() {
   resultQueue  = xQueueCreate(10, sizeof(FpResult));
   serialMutex  = xSemaphoreCreateMutex();
 
-  // Core 0: networking and camera
-  xTaskCreatePinnedToCore(wifiManagerTask,  "wifiManager",  4096, NULL, 3, NULL, 0);
-  xTaskCreatePinnedToCore(cameraStreamTask, "cameraStream", 8192, NULL, 4, NULL, 0);
-  xTaskCreatePinnedToCore(httpServerTask,   "httpServer",   8192, NULL, 3, NULL, 0);
+  // Core 0: networking, camera, and outbound tunnel bridge
+  xTaskCreatePinnedToCore(wifiManagerTask,   "wifiManager",   4096,  NULL, 3, NULL, 0);
+  xTaskCreatePinnedToCore(cameraStreamTask,  "cameraStream",  8192,  NULL, 4, NULL, 0);
+  xTaskCreatePinnedToCore(httpServerTask,    "httpServer",    8192,  NULL, 3, NULL, 0);
+  xTaskCreatePinnedToCore(backendBridgeTask, "backendBridge", 10240, NULL, 3, NULL, 0);
 
   // Core 1: fingerprint, status LEDs, watchdog
   xTaskCreatePinnedToCore(fingerprintTask,  "fingerprint",  4096, NULL, 4, NULL, 1);

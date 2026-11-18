@@ -72,6 +72,17 @@ export async function verifyIdentity(nidNumber: string): Promise<VerifyResponse>
   return res.json()
 }
 
-export function getCameraSnapshotUrl(): string {
-  return `${API_BASE}/api/v1/device/snapshot?t=${Date.now()}`
+export function getCameraSnapshotUrl(fresh: boolean = false): string {
+  return `${API_BASE}/api/v1/device/snapshot?t=${Date.now()}${fresh ? '&fresh=true' : ''}`
 }
+
+export async function checkFaceDetection(): Promise<{ face_detected: boolean; confidence: number }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/device/detect`)
+    if (!res.ok) return { face_detected: false, confidence: 0 }
+    return res.json()
+  } catch {
+    return { face_detected: false, confidence: 0 }
+  }
+}
+

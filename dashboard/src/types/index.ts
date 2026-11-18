@@ -74,3 +74,4 @@ export interface EnrollmentStatus {
   fingerprint_enrolled: boolean
   fully_registered: boolean
 }
+

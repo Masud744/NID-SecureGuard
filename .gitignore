@@ -15,6 +15,7 @@ node_modules/
 *.o
 *.elf
 build/
+firmware/esp32_secureguard/credentials.h
 
 # Trained models and face data (regenerated per deployment)
 backend/data/face_model.yml
