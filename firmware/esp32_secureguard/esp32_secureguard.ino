@@ -5,6 +5,8 @@
 #include <esp_camera.h>
 #include <Adafruit_Fingerprint.h>
 #include <mbedtls/md.h>
+#include <time.h>
+#include <sys/time.h>
 
 #if __has_include("credentials.h")
 #include "credentials.h"
@@ -450,6 +452,7 @@ void wifiManagerTask(void *param) {
         xEventGroupSetBits(systemEvents, EVT_WIFI_CONNECTED);
         Serial.printf("WiFi connected! IP: %s, RSSI: %d dBm\n",
                       WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        configTime(0, 0, "pool.ntp.org", "time.google.com");
       } else {
         Serial.println("WiFi connection failed. Scanning 2.4GHz networks in range...");
         int n = WiFi.scanNetworks();
@@ -659,10 +662,22 @@ static String computeHmacSha256(const uint8_t *payload, size_t payloadLen, uint3
   snprintf(tsStr, sizeof(tsStr), "%lu", static_cast<unsigned long>(timestamp));
   size_t tsLen = strlen(tsStr);
 
+  uint8_t rawSecret[32];
+  size_t secretLen = strlen(ESP32_DEVICE_SECRET);
+  const uint8_t *keyPtr = reinterpret_cast<const uint8_t *>(ESP32_DEVICE_SECRET);
+  if (secretLen == 64) {
+    for (size_t i = 0; i < 32; i++) {
+      char byteChars[3] = { ESP32_DEVICE_SECRET[i * 2], ESP32_DEVICE_SECRET[i * 2 + 1], '\0' };
+      rawSecret[i] = static_cast<uint8_t>(strtoul(byteChars, nullptr, 16));
+    }
+    keyPtr = rawSecret;
+    secretLen = 32;
+  }
+
   mbedtls_md_context_t ctx;
   mbedtls_md_init(&ctx);
   mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1);
-  mbedtls_md_hmac_starts(&ctx, (const unsigned char *)ESP32_DEVICE_SECRET, strlen(ESP32_DEVICE_SECRET));
+  mbedtls_md_hmac_starts(&ctx, keyPtr, secretLen);
   if (payload && payloadLen > 0) {
     mbedtls_md_hmac_update(&ctx, (const unsigned char *)payload, payloadLen);
   }
@@ -691,6 +706,56 @@ static bool beginBackendRequest(HTTPClient &http, WiFiClientSecure &tls,
   return http.begin(plain, url);
 }
 
+static uint32_t getDeviceEpoch() {
+  time_t now = time(nullptr);
+  if (now > 1700000000) {
+    return static_cast<uint32_t>(now);
+  }
+  return 0;
+}
+
+static void syncDeviceTime(const String &baseUrl) {
+  time_t now = time(nullptr);
+  if (now > 1700000000) {
+    return;
+  }
+
+  Serial.println("Syncing device clock via NTP...");
+  configTime(0, 0, "pool.ntp.org", "time.google.com");
+  for (int i = 0; i < 30; i++) {
+    vTaskDelay(pdMS_TO_TICKS(200));
+    now = time(nullptr);
+    if (now > 1700000000) {
+      Serial.printf("Clock synced via NTP: %lu\n", static_cast<unsigned long>(now));
+      return;
+    }
+  }
+
+  Serial.println("NTP pending, querying backend /api/v1/device/time...");
+  WiFiClientSecure tls;
+  WiFiClient plain;
+  HTTPClient http;
+  String url = baseUrl + "/api/v1/device/time";
+  if (beginBackendRequest(http, tls, plain, url, 8000)) {
+    int code = http.GET();
+    if (code == 200) {
+      String resp = http.getString();
+      int start = resp.indexOf("\"epoch\":");
+      if (start >= 0) {
+        start += 8;
+        while (start < static_cast<int>(resp.length()) && (resp[start] == ' ' || resp[start] == ':')) start++;
+        uint32_t epoch = strtoul(resp.c_str() + start, nullptr, 10);
+        if (epoch > 1700000000) {
+          struct timeval tv = { .tv_sec = static_cast<time_t>(epoch), .tv_usec = 0 };
+          settimeofday(&tv, NULL);
+          Serial.printf("Clock synced via backend HTTP: %lu\n", static_cast<unsigned long>(epoch));
+        }
+      }
+    }
+    http.end();
+  }
+}
+
 static void postBridgeResult(const String &baseUrl, const String &cmdId,
                              bool success, uint16_t templateId,
                              uint16_t confidence, const char *message) {
@@ -714,10 +779,12 @@ static void postBridgeResult(const String &baseUrl, const String &cmdId,
            confidence,
            message);
 
-  uint32_t now = millis() / 1000;
-  String sig = computeHmacSha256(reinterpret_cast<const uint8_t *>(body), strlen(body), now);
-  http.addHeader("X-Device-Timestamp", String(now));
-  http.addHeader("X-Device-Signature", sig);
+  uint32_t now = getDeviceEpoch();
+  if (now > 0) {
+    String sig = computeHmacSha256(reinterpret_cast<const uint8_t *>(body), strlen(body), now);
+    http.addHeader("X-Device-Timestamp", String(now));
+    http.addHeader("X-Device-Signature", sig);
+  }
 
   http.POST(reinterpret_cast<uint8_t *>(body), strlen(body));
   http.end();
@@ -752,10 +819,12 @@ static void handleBridgeCapture(const String &baseUrl, const String &cmdId, int 
     String url = baseUrl + "/api/v1/device/frame?cmd_id=" + cmdId;
     if (beginBackendRequest(http, tls, plain, url, 15000)) {
       http.addHeader("Content-Type", "image/jpeg");
-      uint32_t now = millis() / 1000;
-      String sig = computeHmacSha256(fb->buf, fb->len, now);
-      http.addHeader("X-Device-Timestamp", String(now));
-      http.addHeader("X-Device-Signature", sig);
+      uint32_t now = getDeviceEpoch();
+      if (now > 0) {
+        String sig = computeHmacSha256(fb->buf, fb->len, now);
+        http.addHeader("X-Device-Timestamp", String(now));
+        http.addHeader("X-Device-Signature", sig);
+      }
       int code = http.POST(fb->buf, fb->len);
       if (code >= 200 && code < 300) {
         sent++;
@@ -816,6 +885,10 @@ void backendBridgeTask(void *param) {
   for (;;) {
     xEventGroupWaitBits(systemEvents, EVT_WIFI_CONNECTED, pdFALSE, pdTRUE, portMAX_DELAY);
 
+    if (getDeviceEpoch() == 0) {
+      syncDeviceTime(baseUrl);
+    }
+
     WiFiClientSecure tls;
     WiFiClient plain;
     HTTPClient http;
@@ -837,17 +910,19 @@ void backendBridgeTask(void *param) {
              static_cast<unsigned long>(ESP.getFreePsram()),
              WiFi.localIP().toString().c_str());
 
-    uint32_t now = millis() / 1000;
-    String sig = computeHmacSha256(reinterpret_cast<const uint8_t *>(hb), strlen(hb), now);
-    http.addHeader("X-Device-Timestamp", String(now));
-    http.addHeader("X-Device-Signature", sig);
+    uint32_t now = getDeviceEpoch();
+    if (now > 0) {
+      String sig = computeHmacSha256(reinterpret_cast<const uint8_t *>(hb), strlen(hb), now);
+      http.addHeader("X-Device-Timestamp", String(now));
+      http.addHeader("X-Device-Signature", sig);
+    }
 
     int code = http.POST(reinterpret_cast<uint8_t *>(hb), strlen(hb));
-    String resp = (code == 200) ? http.getString() : "";
+    String resp = http.getString();
     http.end();
 
     if (code != 200) {
-      Serial.printf("Bridge poll failed (HTTP %d), retrying\n", code);
+      Serial.printf("Bridge poll failed (HTTP %d): %s\n", code, resp.c_str());
       vTaskDelay(pdMS_TO_TICKS(3000));
       continue;
     }
