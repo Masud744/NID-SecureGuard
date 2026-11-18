@@ -14,6 +14,18 @@ export async function fetchUsers(): Promise<User[]> {
   return res.json()
 }
 
+export async function fetchLogs(limit: number = 20): Promise<import('../types').SecurityLog[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/logs?limit=${limit}`)
+    if (res.ok) {
+      return await res.json()
+    }
+  } catch (err) {
+    console.error('Failed to fetch logs:', err)
+  }
+  return []
+}
+
 export async function createUser(data: {
   nid_number: string
   full_name: string
