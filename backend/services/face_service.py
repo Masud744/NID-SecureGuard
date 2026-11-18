@@ -69,7 +69,7 @@ class FaceService:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         eq = cv2.equalizeHist(gray)
         faces = self.face_cascade.detectMultiScale(
-            eq, scaleFactor=1.15, minNeighbors=4, minSize=(60, 60)
+            eq, scaleFactor=1.08, minNeighbors=3, minSize=(60, 60)
         )
         if len(faces) == 0:
             return None
