@@ -1,4 +1,4 @@
-# NID SecureGuard: Dual-Biometric Identity Verification & Multi-Modal Access Control Platform
+# NID SecureGuard: A Cyber-Physical Multi-Modal Biometric Verification Architecture with Hardware HMAC Authentication and Tamper-Evident Audit Chaining
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=black)](https://reactjs.org)
