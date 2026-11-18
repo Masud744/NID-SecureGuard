@@ -32,10 +32,9 @@ services:
         value: "20"
 
   # 2. React 19 + TypeScript Kiosk & Admin Dashboard
-  - type: static
+  - type: web
     name: nid-secureguard-dashboard
-    region: frankfurt
-    plan: free
+    runtime: static
     rootDir: dashboard
     buildCommand: npm install && npm run build
     staticPublishPath: dist
