@@ -1,5 +1,5 @@
+import asyncio
 import logging
-import time
 from pathlib import Path
 
 import cv2
@@ -17,7 +17,8 @@ MAX_STREAM_BYTES = 2 * 1024 * 1024
 
 
 class FaceService:
-    def __init__(self):
+    def __init__(self, device_bridge=None):
+        self.bridge = device_bridge
         self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
         self.recognizer = cv2.face.LBPHFaceRecognizer_create()
         if MODEL_PATH.exists():
@@ -26,8 +27,13 @@ class FaceService:
         else:
             self._trained = False
 
-    def capture_from_esp32(self, stream_url: str) -> np.ndarray:
-        """Grab a single JPEG frame from an ESP32 MJPEG stream or capture endpoint."""
+    def _decode_jpeg(self, jpg: bytes, source: str) -> np.ndarray:
+        frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if frame is None:
+            raise ValueError(f"Could not decode frame from {source}")
+        return frame
+
+    def _capture_lan_frame(self, stream_url: str) -> np.ndarray:
         buf = bytearray()
         try:
             with httpx.Client(timeout=10.0) as client:
@@ -40,13 +46,7 @@ class FaceService:
                             end = buf.find(b"\xff\xd9", start + 2)
                             if end != -1:
                                 jpg = bytes(buf[start : end + 2])
-                                frame = cv2.imdecode(
-                                    np.frombuffer(jpg, dtype=np.uint8),
-                                    cv2.IMREAD_COLOR,
-                                )
-                                if frame is None:
-                                    raise ValueError(f"Could not decode frame from {stream_url}")
-                                return frame
+                                return self._decode_jpeg(jpg, stream_url)
                         if len(buf) > MAX_STREAM_BYTES:
                             break
         except httpx.HTTPStatusError as e:
@@ -57,6 +57,13 @@ class FaceService:
             raise DeviceOfflineError("ESP32 camera", stream_url)
 
         raise ValueError(f"No valid JPEG frame received from {stream_url}")
+
+    async def capture_from_esp32(self, stream_url: str) -> np.ndarray:
+        """Grab a single JPEG frame over the tunnel bridge or directly from the ESP32."""
+        if self.bridge and self.bridge.is_online():
+            frames = await self.bridge.request_frames(count=1, timeout=15.0)
+            return self._decode_jpeg(frames[0], "tunnel bridge")
+        return await asyncio.to_thread(self._capture_lan_frame, stream_url)
 
     def detect_face(self, frame: np.ndarray) -> np.ndarray | None:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -71,7 +78,7 @@ class FaceService:
         roi = gray[y : y + h, x : x + w]
         return cv2.resize(roi, (200, 200))
 
-    def enroll_face(
+    async def enroll_face(
         self,
         user_id: str,
         model_label: int,
@@ -86,32 +93,62 @@ class FaceService:
         samples = []
         captured = 0
 
-        for attempt in range(num_samples * 2):
-            if captured >= num_samples:
-                break
-            try:
-                frame = self.capture_from_esp32(stream_url)
-                face_roi = self.detect_face(frame)
-                if face_roi is None:
-                    time.sleep(0.3)
-                    continue
+        if self.bridge and self.bridge.is_online():
+            # Request batches over the tunnel so enrollment finishes in a few round-trips
+            for _ in range(3):
+                remaining = num_samples - captured
+                if remaining <= 0:
+                    break
+                batch = await self.bridge.request_frames(
+                    count=min(remaining + 2, 10), timeout=35.0
+                )
+                for jpg in batch:
+                    if captured >= num_samples:
+                        break
+                    try:
+                        frame = self._decode_jpeg(jpg, "tunnel bridge")
+                        face_roi = self.detect_face(frame)
+                        if face_roi is None:
+                            continue
+                        samples.append(face_roi)
+                        captured += 1
+                        ok, encoded = cv2.imencode(".jpg", face_roi)
+                        if ok:
+                            file_path = f"{user_id}/sample_{captured}.jpg"
+                            supabase_client.storage.from_("face-samples").upload(
+                                file_path,
+                                encoded.tobytes(),
+                                file_options={"content-type": "image/jpeg", "upsert": "true"},
+                            )
+                    except Exception as e:
+                        logger.warning("Tunnel sample failed: %s", e)
+        else:
+            for attempt in range(num_samples * 2):
+                if captured >= num_samples:
+                    break
+                try:
+                    frame = await self.capture_from_esp32(stream_url)
+                    face_roi = self.detect_face(frame)
+                    if face_roi is None:
+                        await asyncio.sleep(0.3)
+                        continue
 
-                samples.append(face_roi)
-                captured += 1
+                    samples.append(face_roi)
+                    captured += 1
 
-                ok, encoded = cv2.imencode(".jpg", face_roi)
-                if ok:
-                    file_path = f"{user_id}/sample_{captured}.jpg"
-                    supabase_client.storage.from_("face-samples").upload(
-                        file_path,
-                        encoded.tobytes(),
-                        file_options={"content-type": "image/jpeg", "upsert": "true"},
-                    )
-                time.sleep(0.3)
-            except DeviceOfflineError:
-                raise
-            except Exception as e:
-                logger.warning("Sample attempt %d failed: %s", attempt, e)
+                    ok, encoded = cv2.imencode(".jpg", face_roi)
+                    if ok:
+                        file_path = f"{user_id}/sample_{captured}.jpg"
+                        supabase_client.storage.from_("face-samples").upload(
+                            file_path,
+                            encoded.tobytes(),
+                            file_options={"content-type": "image/jpeg", "upsert": "true"},
+                        )
+                    await asyncio.sleep(0.3)
+                except DeviceOfflineError:
+                    raise
+                except Exception as e:
+                    logger.warning("Sample attempt %d failed: %s", attempt, e)
 
         if not samples:
             raise ValueError("No face samples captured — check camera and positioning")

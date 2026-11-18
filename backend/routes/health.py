@@ -16,6 +16,8 @@ async def health_check(request: Request):
     return {
         "status": "ok",
         "device_online": device_online,
+        "mode": device.get("mode", "lan") if device else None,
         "camera": device.get("camera") if device else None,
         "fingerprint_sensor": device.get("fingerprint") if device else None,
+        "device_ip": device.get("ip") if device else None,
     }

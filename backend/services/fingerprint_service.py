@@ -16,10 +16,14 @@ def _extract_error(resp: httpx.Response) -> str:
 
 
 class FingerprintService:
-    def __init__(self, esp32_base_url: str):
+    def __init__(self, esp32_base_url: str, device_bridge=None):
         self.base_url = esp32_base_url.rstrip("/")
+        self.bridge = device_bridge
 
     async def get_device_status(self) -> dict:
+        if self.bridge and self.bridge.is_online():
+            return self.bridge.get_status()
+
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(f"{self.base_url}/status")
@@ -34,6 +38,9 @@ class FingerprintService:
 
     async def enroll(self, template_id: int) -> dict:
         """Start fingerprint enrollment on the ESP32 for the given slot."""
+        if self.bridge and self.bridge.is_online():
+            return await self.bridge.request_fingerprint_enroll(template_id)
+
         try:
             async with httpx.AsyncClient(timeout=35.0) as client:
                 # ESP32 WebServer reads template_id via server.arg()
@@ -66,6 +73,9 @@ class FingerprintService:
 
     async def verify(self) -> dict:
         """Ask the ESP32 to scan and match a fingerprint against stored templates."""
+        if self.bridge and self.bridge.is_online():
+            return await self.bridge.request_fingerprint_verify()
+
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
                 resp = await client.post(f"{self.base_url}/fingerprint/verify")

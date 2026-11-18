@@ -56,7 +56,7 @@ class AuthService:
             return self._denied(nid_number, reason=reason)
 
         try:
-            frame = self.face.capture_from_esp32(stream_url)
+            frame = await self.face.capture_from_esp32(stream_url)
             label, confidence, face_status = self.face.recognize_face(
                 frame, self.config.FACE_CONFIDENCE_THRESHOLD
             )

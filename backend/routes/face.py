@@ -35,7 +35,7 @@ async def enroll_face(
     model_label = _existing_label(user) or (zlib.crc32(user_id.encode()) & 0x7FFFFFFF)
 
     try:
-        face_service.enroll_face(
+        await face_service.enroll_face(
             user_id=user_id,
             model_label=model_label,
             stream_url=config.ESP32_CAMERA_URL,
