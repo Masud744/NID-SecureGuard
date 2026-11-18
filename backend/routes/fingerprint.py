@@ -46,7 +46,7 @@ async def enroll_fingerprint(
             "status": "enrolled",
             "enrolled_at": datetime.now(timezone.utc).isoformat(),
         },
-        on_conflict="user_id",
+        on_conflict="template_id",
     ).execute()
 
     return await user_service.check_enrollment(user_id)

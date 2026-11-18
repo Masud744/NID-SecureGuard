@@ -103,15 +103,14 @@ class AuthService:
             )
             return self._denied(nid_number, face_result=face_result, reason=reason)
 
-        fp_record = _unwrap_relation(user.get("fingerprint_records"))
-        expected_tid = (
-            fp_record.get("template_id")
-            if fp_record and fp_record.get("status") == "enrolled"
-            else None
-        )
+        raw_fp = user.get("fingerprint_records")
+        fp_records = raw_fp if isinstance(raw_fp, list) else ([raw_fp] if isinstance(raw_fp, dict) else [])
+        valid_tids = {
+            r.get("template_id") for r in fp_records if r and r.get("status") == "enrolled"
+        }
         fp_match = (
             fp_result.get("status") == "match"
-            and fp_result.get("template_id") == expected_tid
+            and fp_result.get("template_id") in valid_tids
         )
 
         if face_match and fp_match:
