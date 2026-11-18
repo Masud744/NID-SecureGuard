@@ -64,6 +64,15 @@ export const App: React.FC = () => {
     }
   }, [])
 
+  // Guard Kiosk Mode: in kiosk mode without operator login, strictly allow only 'kiosk' and 'registration'
+  useEffect(() => {
+    if (isKioskMode && !operator) {
+      if (activeTab !== 'kiosk' && activeTab !== 'registration') {
+        setActiveTab('kiosk')
+      }
+    }
+  }, [isKioskMode, operator, activeTab])
+
   // Poll hardware status every 5 seconds
   useEffect(() => {
     const check = () => {
@@ -119,12 +128,19 @@ export const App: React.FC = () => {
       {/* Left Navigation Sidebar */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          if (isKioskMode && !operator && tab !== 'kiosk' && tab !== 'registration') {
+            return
+          }
+          setActiveTab(tab)
+        }}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         alertCount={alertCount}
         operator={operator}
         onSignOut={operator ? handleSignOut : undefined}
+        isKioskMode={isKioskMode && !operator}
+        onExitKiosk={() => setIsKioskMode(false)}
       />
 
       {/* Main App Canvas */}
@@ -169,8 +185,14 @@ export const App: React.FC = () => {
           )}
           {activeTab === 'registration' && (
             <RegistrationStudio
-              onRegistered={() => setActiveTab('registry')}
-              onNavigate={setActiveTab}
+              onRegistered={() => setActiveTab(isKioskMode && !operator ? 'kiosk' : 'registry')}
+              onNavigate={(tab) => {
+                if (isKioskMode && !operator && tab !== 'kiosk' && tab !== 'registration') {
+                  setActiveTab('kiosk')
+                } else {
+                  setActiveTab(tab)
+                }
+              }}
             />
           )}
           {activeTab === 'logs' && <AuditLogs />}
@@ -181,8 +203,8 @@ export const App: React.FC = () => {
             />
           )}
           {activeTab === 'device' && <DeviceView health={health} />}
-          {activeTab === 'settings' && <SettingsView />}
-          {activeTab === 'roles' && <SettingsView isRoles />}
+          {activeTab === 'settings' && <SettingsView operator={operator} />}
+          {activeTab === 'roles' && <SettingsView isRoles operator={operator} />}
         </main>
       </div>
     </div>

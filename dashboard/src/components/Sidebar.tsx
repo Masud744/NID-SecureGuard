@@ -12,6 +12,7 @@ import {
   ChevronDown,
   X,
   LogOut,
+  Lock,
 } from 'lucide-react'
 import type { OperatorProfile } from '../lib/auth'
 
@@ -34,6 +35,8 @@ interface SidebarProps {
   alertCount?: number
   operator?: OperatorProfile | null
   onSignOut?: () => void
+  isKioskMode?: boolean
+  onExitKiosk?: () => void
 }
 
 interface NavItem {
@@ -74,6 +77,16 @@ const navSections: NavSection[] = [
   },
 ]
 
+const kioskNavSections: NavSection[] = [
+  {
+    category: 'Hardware Station Terminal',
+    items: [
+      { id: 'kiosk', label: 'Identity Verification', icon: ScanFace },
+      { id: 'registration', label: 'Biometric Enrollment', icon: UserPlus },
+    ],
+  },
+]
+
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
@@ -82,7 +95,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   alertCount = 0,
   operator,
   onSignOut,
+  isKioskMode = false,
+  onExitKiosk,
 }) => {
+  const currentSections = isKioskMode ? kioskNavSections : navSections
   return (
     <>
       {/* Mobile Backdrop */}
@@ -128,7 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation Sections */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-          {navSections.map((section) => (
+          {currentSections.map((section) => (
             <div key={section.category}>
               <h2 className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-brand-300/80">
                 {section.category}
@@ -174,38 +190,63 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </div>
 
-        {/* User Profile Card (Bottom) */}
+        {/* User Profile / Kiosk Exit Card (Bottom) */}
         <div className="p-3 border-t border-brand-800/60 bg-brand-950/40">
-          <div className="flex items-center justify-between p-2 rounded-xl hover:bg-brand-850/60 transition-colors">
-            <div className="flex items-center space-x-3 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-brand-700 border border-brand-500/40 text-white font-bold text-xs flex items-center justify-center shadow-inner shrink-0">
-                {operator?.fullName ? operator.fullName.slice(0, 2).toUpperCase() : 'OP'}
+          {isKioskMode ? (
+            <div className="p-2 space-y-2">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white leading-tight">
+                    Hardware Station Kiosk
+                  </p>
+                  <p className="text-[10px] text-emerald-300 font-mono">
+                    Restricted Terminal
+                  </p>
+                </div>
               </div>
-              <div className="text-left min-w-0">
-                <p className="text-xs font-semibold text-white leading-tight truncate">
-                  {operator?.fullName || 'Station Terminal'}
-                </p>
-                <p className="text-[10px] text-brand-300 font-medium truncate">
-                  {operator?.role === 'super_admin'
-                    ? 'Super Administrator'
-                    : operator?.role === 'registrar'
-                    ? 'Biometric Registrar'
-                    : operator?.role === 'auditor'
-                    ? 'Compliance Auditor'
-                    : 'Terminal Officer'}
-                </p>
-              </div>
+              {onExitKiosk && (
+                <button
+                  onClick={onExitKiosk}
+                  className="w-full py-1.5 px-2.5 rounded-lg bg-brand-800 hover:bg-brand-700 text-emerald-300 hover:text-white text-[11px] font-semibold border border-brand-600/40 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Exit Kiosk & Admin Login</span>
+                </button>
+              )}
             </div>
-            {onSignOut && (
-              <button
-                onClick={onSignOut}
-                className="p-1.5 rounded-lg text-brand-300 hover:text-white hover:bg-brand-800 transition-colors cursor-pointer shrink-0"
-                title="Sign Out of Console"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          ) : (
+            <div className="flex items-center justify-between p-2 rounded-xl hover:bg-brand-850/60 transition-colors">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-brand-700 border border-brand-500/40 text-white font-bold text-xs flex items-center justify-center shadow-inner shrink-0">
+                  {operator?.fullName ? operator.fullName.slice(0, 2).toUpperCase() : 'OP'}
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="text-xs font-semibold text-white leading-tight truncate">
+                    {operator?.fullName || 'Station Terminal'}
+                  </p>
+                  <p className="text-[10px] text-brand-300 font-medium truncate">
+                    {operator?.role === 'super_admin'
+                      ? 'Super Administrator'
+                      : operator?.role === 'registrar'
+                      ? 'Biometric Registrar'
+                      : operator?.role === 'auditor'
+                      ? 'Compliance Auditor'
+                      : 'Terminal Officer'}
+                  </p>
+                </div>
+              </div>
+              {onSignOut && (
+                <button
+                  onClick={onSignOut}
+                  className="p-1.5 rounded-lg text-brand-300 hover:text-white hover:bg-brand-800 transition-colors cursor-pointer shrink-0"
+                  title="Sign Out of Console"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </aside>
     </>

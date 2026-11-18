@@ -280,7 +280,7 @@ export const DashboardView: React.FC<{
               </div>
               <div className="flex justify-between text-[10px] text-slate-500 font-mono">
                 <span>Model: LBPH FaceRecognizer</span>
-                <span>Threshold: ≤ 85.0 Euclidean</span>
+                <span>Threshold: &le; 85.0 Euclidean</span>
               </div>
             </div>
 
