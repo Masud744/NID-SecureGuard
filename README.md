@@ -7,10 +7,17 @@
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg?logo=supabase&logoColor=white)](https://supabase.com)
 [![ESP32-S3](https://img.shields.io/badge/ESP32--S3-FreeRTOS-E7352C.svg?logo=espressif&logoColor=white)](https://www.espressif.com)
 [![OpenCV](https://img.shields.io/badge/OpenCV-LBPH_CV-5C3EE8.svg?logo=opencv&logoColor=white)](https://opencv.org)
+[![Render](https://img.shields.io/badge/Render-Live_Production-46E3B7.svg?logo=render&logoColor=white)](https://nid-secureguard-dashboard.onrender.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **An end-to-end Cyber-Physical National Identity Verification and Access Control Platform coupling high-speed edge hardware (ESP32-S3, OV2640 camera DMA, Grow R307S optical fingerprint sensor) with an OpenCV LBPH facial recognition engine, Supabase PostgreSQL audit ledger, sovereign root operator governance, and standalone hardware booth kiosk isolation.**
+
+> [!IMPORTANT]
+> **Live Production Deployments:**
+> - **Kiosk & Administrative Dashboard:** [https://nid-secureguard-dashboard.onrender.com](https://nid-secureguard-dashboard.onrender.com)
+> - **Central Processing & Security API:** [https://nid-secureguard-api.onrender.com](https://nid-secureguard-api.onrender.com)
+> - **API Health & Edge Hardware Probe:** [https://nid-secureguard-api.onrender.com/health](https://nid-secureguard-api.onrender.com/health)
 
 > [!NOTE]
 > **Complete Visual Demonstration Gallery:** For the complete 14-asset visual showcase—including full-resolution hardware station kiosk screens, dual-biometric enrollment studio, forensic security audit inspector, live ESP32-S3 FreeRTOS telemetry diagnostics, and physical silicon breadboard photographs—see the [Complete Visual Demonstration Gallery (Section 12)](#12-complete-visual-demonstration-gallery-all-14-assets).
@@ -274,10 +281,18 @@ $$\text{NID}_{\text{Index}} = \text{HMAC-SHA256}(\text{NID}_{\text{Normalized}},
 This produces a deterministic 256-bit hexadecimal digest stored alongside the record, allowing exact queries (`WHERE nid_hash = ?`) while keeping the database dump immune to rainbow-table or dictionary attacks.
 
 ### 7.3 Hardware HMAC-SHA256 Handshake & Replay Guard
-To prevent rogue network actors from injecting forged biometric outcomes (`{"cmd_id": "...", "success": true}`):
-- The ESP32-S3 firmware utilizes the hardware-accelerated `mbedtls` engine to generate an HMAC-SHA256 digital signature:
+To prevent rogue network actors from intercepting the cloud connection or injecting forged biometric outcomes (`{"cmd_id": "...", "success": true}`):
+- **Cryptographic Signature Generation:** The ESP32-S3 firmware utilizes the hardware-accelerated `mbedtls` engine to generate an HMAC-SHA256 digital signature over every payload and its synchronized epoch timestamp:
   $$\text{Sig} = \text{HMAC-SHA256}(\text{BodyBytes} \parallel \text{Timestamp}_{\text{epoch}}, K_{\text{device}})$$
-- **Replay Window:** The FastAPI gateway enforces $|t_{\text{current}} - t_{\text{device}}| \le 120\text{ seconds}$. Stale packets or captured requests are dropped immediately.
+- **256-Bit Raw Key Normalization:** The 64-character hexadecimal device secret is decoded into 32 raw binary bytes (`bytes.fromhex(K)`), ensuring byte-for-byte alignment between C++ `mbedtls` and Python `hashlib/hmac`.
+- **Dual-Phase Clock Synchronization:** On boot, the ESP32-S3 synchronizes its system clock via SNTP (`pool.ntp.org`, `time.google.com`) with an automatic HTTPS fallback to the gateway endpoint `GET /api/v1/device/time`. Requests are held until time is synchronized.
+- **Replay Attack Window:** The FastAPI gateway enforces $|t_{\text{server}} - t_{\text{device}}| \le 180\text{ seconds}$. Stale packets, replayed transmissions, or expired timestamps are rejected instantaneously with `HTTP 403 Forbidden`.
+- **Protected Telemetry Endpoints:**
+  | Endpoint | HTTP Method | Payload Content | Verification Header |
+  | :--- | :--- | :--- | :--- |
+  | `/api/v1/device/poll` | `POST` | Device status, free heap, free PSRAM, IP | `X-Device-Timestamp`, `X-Device-Signature` |
+  | `/api/v1/device/frame` | `POST` | Raw JPEG binary image buffer (`fb->buf`) | `X-Device-Timestamp`, `X-Device-Signature` |
+  | `/api/v1/device/result` | `POST` | Biometric match status, template ID, score | `X-Device-Timestamp`, `X-Device-Signature` |
 
 ### 7.4 Tamper-Evident Cryptographic Audit Ledger
 Every verification event is signed and linked into a Merkle-style hash chain:
@@ -348,7 +363,26 @@ cd dashboard
 npm install
 ```
 
-### Step 5: Run Platform Locally
+### Step 5: Flash ESP32-S3 Firmware
+Connect the ESP32-S3 via USB (e.g., `/dev/ttyACM0` on Linux or `COMx` on Windows):
+
+- **Via `arduino-cli` (Automated CLI):**
+  ```bash
+  # Compile firmware with 16MB Flash, OPI PSRAM, and Huge APP partition
+  arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,PartitionScheme=huge_app,UploadSpeed=921600 firmware/esp32_secureguard
+
+  # Upload firmware to connected serial port
+  arduino-cli upload -p /dev/ttyACM0 --fqbn esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,PartitionScheme=huge_app,UploadSpeed=921600 firmware/esp32_secureguard
+  ```
+
+- **Via Arduino IDE (GUI):**
+  1. Open [esp32_secureguard.ino](file:///home/shahriar-alom-masud/Projects/Secure%20Gaurd/firmware/esp32_secureguard/esp32_secureguard.ino).
+  2. Select **Board:** `ESP32S3 Dev Module`.
+  3. Settings: `Flash Size: 16MB`, `PSRAM: OPI PSRAM`, `Partition Scheme: Huge APP (3MB No OTA / 1MB SPIFFS)`, `Upload Speed: 921600`.
+  4. Ensure WiFi credentials in [credentials.h](file:///home/shahriar-alom-masud/Projects/Secure%20Gaurd/firmware/esp32_secureguard/credentials.h) or the top of the file point to your network and backend target (`https://nid-secureguard-api.onrender.com` for cloud, or `http://<LAN_IP>:8000` for local).
+  5. Click **Upload** and inspect Serial Monitor at `115200` baud.
+
+### Step 6: Run Platform Locally
 - **Start Backend API:**
   ```bash
   source .venv/bin/activate
@@ -451,6 +485,27 @@ Because free web services spin down after 15 minutes of inactivity:
 - Register a free HTTP probe at [cron-job.org](https://cron-job.org) or [UptimeRobot](https://uptimerobot.com).
 - Configure a `GET` ping every 10 minutes targeting `https://nid-secureguard-api.onrender.com/health`.
 - This ensures the Python runtime remains pre-warmed 24/7 with zero initial latency.
+
+### 10.3 Live Production Verification & Telemetry
+You can inspect and verify the production cluster health, cryptographic ledger, and physical edge hardware status in real time:
+
+```bash
+# 1. Cloud Backend Health & Edge Hardware Connection Status
+curl -s https://nid-secureguard-api.onrender.com/health
+# Response: {"status":"ok","device_online":true,"mode":"tunnel","camera":true,"fingerprint_sensor":true,"device_ip":"172.16.115.131"}
+
+# 2. Live Hardware FreeRTOS Telemetry & Memory Statistics
+curl -s https://nid-secureguard-api.onrender.com/api/v1/device/status
+# Response: {"online":true,"wifi":true,"camera":true,"fingerprint":true,"free_heap":8491256,"free_psram":8315304,"ip":"172.16.115.131","mode":"tunnel","last_seen_ago_sec":5.4}
+
+# 3. Live Edge Camera Snapshot via Cloud Ingress
+curl -s "https://nid-secureguard-api.onrender.com/api/v1/device/snapshot?fresh=true" -o snapshot.jpg
+# Captures an instantaneous 640x480 JPEG from the physical OV2640 sensor over the cloud tunnel
+
+# 4. Cryptographic Hash-Chain Ledger Integrity Verification
+curl -s https://nid-secureguard-api.onrender.com/api/v1/logs/verify-chain
+# Response: {"valid":true,"message":"Cryptographic integrity verified: all log entries hash-chained and signed","status":"intact","entries_verified":12}
+```
 
 ---
 
