@@ -11,7 +11,9 @@ import {
   Settings,
   ChevronDown,
   X,
+  LogOut,
 } from 'lucide-react'
+import type { OperatorProfile } from '../lib/auth'
 
 export type NavTab =
   | 'dashboard'
@@ -30,6 +32,8 @@ interface SidebarProps {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
   alertCount?: number
+  operator?: OperatorProfile | null
+  onSignOut?: () => void
 }
 
 interface NavItem {
@@ -76,6 +80,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   setIsOpen,
   alertCount = 0,
+  operator,
+  onSignOut,
 }) => {
   return (
     <>
@@ -170,21 +176,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* User Profile Card (Bottom) */}
         <div className="p-3 border-t border-brand-800/60 bg-brand-950/40">
-          <div className="flex items-center justify-between p-2 rounded-xl hover:bg-brand-850/60 cursor-pointer transition-colors">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-full bg-brand-700 border border-brand-500/40 text-white font-bold text-xs flex items-center justify-center shadow-inner">
-                SM
+          <div className="flex items-center justify-between p-2 rounded-xl hover:bg-brand-850/60 transition-colors">
+            <div className="flex items-center space-x-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-brand-700 border border-brand-500/40 text-white font-bold text-xs flex items-center justify-center shadow-inner shrink-0">
+                {operator?.fullName ? operator.fullName.slice(0, 2).toUpperCase() : 'OP'}
               </div>
-              <div className="text-left">
-                <p className="text-xs font-semibold text-white leading-tight">
-                  Shahriar Alom Masud
+              <div className="text-left min-w-0">
+                <p className="text-xs font-semibold text-white leading-tight truncate">
+                  {operator?.fullName || 'Station Terminal'}
                 </p>
-                <p className="text-[10px] text-brand-300 font-medium">
-                  Super Admin
+                <p className="text-[10px] text-brand-300 font-medium truncate">
+                  {operator?.role === 'super_admin'
+                    ? 'Super Administrator'
+                    : operator?.role === 'registrar'
+                    ? 'Biometric Registrar'
+                    : operator?.role === 'auditor'
+                    ? 'Compliance Auditor'
+                    : 'Terminal Officer'}
                 </p>
               </div>
             </div>
-            <ChevronDown className="w-4 h-4 text-brand-300" />
+            {onSignOut && (
+              <button
+                onClick={onSignOut}
+                className="p-1.5 rounded-lg text-brand-300 hover:text-white hover:bg-brand-800 transition-colors cursor-pointer shrink-0"
+                title="Sign Out of Console"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </aside>

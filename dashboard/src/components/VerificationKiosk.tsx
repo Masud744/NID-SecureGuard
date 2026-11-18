@@ -16,11 +16,17 @@ import {
   Loader2,
   CreditCard,
   Sparkles,
+  UserPlus,
+  AlertCircle,
 } from 'lucide-react'
 import { verifyIdentity, getCameraSnapshotUrl, fetchUsers, checkFaceDetection } from '../lib/api'
 import type { VerifyResponse, User } from '../types'
 
-export const VerificationKiosk: React.FC = () => {
+interface VerificationKioskProps {
+  onNavigate?: (tab: any, initialNid?: string) => void
+}
+
+export const VerificationKiosk: React.FC<VerificationKioskProps> = ({ onNavigate }) => {
   const [nidInput, setNidInput] = useState('1998123456789')
   const [isLoading, setIsLoading] = useState(false)
   const [verificationResult, setVerificationResult] = useState<VerifyResponse | null>(null)
@@ -315,6 +321,27 @@ export const VerificationKiosk: React.FC = () => {
                     {u.nid_number}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* Unregistered Citizen Quick-Enrollment Bridge */}
+            {nidInput.trim().length >= 10 && !citizenInfo && onNavigate && (
+              <div className="mt-3 p-3 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs space-y-2 animate-in fade-in duration-150">
+                <div className="flex items-center space-x-1.5 font-bold text-[11px] text-amber-900">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Unregistered National Identity</span>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Citizen NID is not enrolled in the database yet. Would you like to capture live biometrics and register now?
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('registration')}
+                  className="w-full py-2 px-3 rounded-xl bg-brand-900 hover:bg-brand-800 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Enroll Citizen at this Station</span>
+                </button>
               </div>
             )}
           </div>

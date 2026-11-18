@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Menu,
   Cpu,
@@ -6,14 +6,20 @@ import {
   Fingerprint,
   Database,
   Bell,
+  LogOut,
+  User,
+  Shield,
 } from 'lucide-react'
 import type { HealthStatus } from '../types'
 import type { NavTab } from './Sidebar'
+import type { OperatorProfile } from '../lib/auth'
 
 interface HeaderProps {
   health: HealthStatus | null
   activeTab: NavTab
   onToggleSidebar: () => void
+  operator?: OperatorProfile | null
+  onSignOut?: () => void
 }
 
 const tabMetadata: Record<NavTab, { title: string; subtitle: string }> = {
@@ -59,7 +65,10 @@ export const Header: React.FC<HeaderProps> = ({
   health,
   activeTab,
   onToggleSidebar,
+  operator,
+  onSignOut,
 }) => {
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const currentMeta = tabMetadata[activeTab] || tabMetadata.kiosk
 
   const espOnline = health ? health.device_online : true
@@ -154,9 +163,44 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
           </button>
 
-          {/* Profile Circle */}
-          <div className="w-8 h-8 rounded-full bg-brand-850 text-white font-bold text-xs flex items-center justify-center shadow-xs cursor-pointer">
-            SM
+          {/* Profile Circle & Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="w-8 h-8 rounded-full bg-brand-850 hover:bg-brand-900 text-white font-bold text-xs flex items-center justify-center shadow-xs cursor-pointer transition-colors"
+              title={operator?.fullName || 'User Profile'}
+            >
+              {operator?.fullName ? operator.fullName.slice(0, 2).toUpperCase() : 'OP'}
+            </button>
+
+            {showProfileMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                <div className="p-2.5 border-b border-slate-100">
+                  <div className="font-bold text-slate-800 truncate">
+                    {operator?.fullName || 'Station Operator'}
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-mono truncate">
+                    {operator?.email || 'kiosk@secureguard.local'}
+                  </div>
+                  <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-50 text-brand-800 border border-brand-200">
+                    {operator?.role === 'super_admin' ? 'Super Admin' : 'Station Operator'}
+                  </div>
+                </div>
+
+                {onSignOut && (
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false)
+                      onSignOut()
+                    }}
+                    className="w-full mt-1 p-2 rounded-xl text-rose-700 hover:bg-rose-50 flex items-center space-x-2 font-semibold transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out of Console</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
