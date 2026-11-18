@@ -44,7 +44,7 @@ class DeviceBridge:
         }
         self._last_seen = time.monotonic()
 
-    async def poll(self, heartbeat: dict, timeout: float = 20.0) -> dict | None:
+    async def poll(self, heartbeat: dict, timeout: float = 12.0) -> dict | None:
         self.update_heartbeat(heartbeat)
         try:
             cmd = await asyncio.wait_for(self._commands.get(), timeout=timeout)
@@ -149,3 +149,4 @@ class DeviceBridge:
             "status": "match" if matched else "no_match",
             "message": res.get("message", ""),
         }
+

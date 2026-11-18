@@ -8,13 +8,13 @@ Dual-core FreeRTOS firmware for the ESP32-S3-WROOM-1 N16R8 board running an OV26
 
 | Signal | GPIO | Signal | GPIO |
 |--------|------|--------|------|
-| XCLK   | 10   | Y5     | 16   |
-| SIOD   | 40   | Y4     | 18   |
-| SIOC   | 39   | Y3     | 17   |
-| Y9     | 48   | Y2     | 15   |
-| Y8     | 11   | VSYNC  | 38   |
-| Y7     | 12   | HREF   | 47   |
-| Y6     | 14   | PCLK   | 13   |
+| XCLK   | 15   | Y5     | 10   |
+| SIOD   | 4    | Y4     | 8    |
+| SIOC   | 5    | Y3     | 9    |
+| Y9     | 16   | Y2     | 11   |
+| Y8     | 17   | VSYNC  | 6    |
+| Y7     | 18   | HREF   | 7    |
+| Y6     | 12   | PCLK   | 13   |
 
 `PWDN` and `RESET` are not connected (`-1`).
 
