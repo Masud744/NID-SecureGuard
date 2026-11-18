@@ -9,7 +9,6 @@ import {
   Bell,
   Cpu,
   Settings,
-  UserCheck,
   ChevronDown,
   X,
 } from 'lucide-react'
@@ -47,21 +46,16 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
-    category: 'Overview',
+    category: 'Operations',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'kiosk', label: 'Identity Verification', icon: ScanFace },
+      { id: 'registry', label: 'Citizen Directory', icon: Users },
+      { id: 'registration', label: 'Biometric Enrollment', icon: UserPlus },
     ],
   },
   {
-    category: 'Identity Management',
-    items: [
-      { id: 'kiosk', label: 'Verification Kiosk', icon: ScanFace },
-      { id: 'registry', label: 'Citizen Registry', icon: Users },
-      { id: 'registration', label: 'Citizen Registration', icon: UserPlus },
-    ],
-  },
-  {
-    category: 'Security',
+    category: 'Security & Audit',
     items: [
       { id: 'logs', label: 'Security Audit Logs', icon: FileText },
       { id: 'alerts', label: 'Alerts & Incidents', icon: Bell, badge: 2 },
@@ -70,14 +64,8 @@ const navSections: NavSection[] = [
   {
     category: 'Infrastructure',
     items: [
-      { id: 'device', label: 'Device Management', icon: Cpu },
-    ],
-  },
-  {
-    category: 'Administration',
-    items: [
-      { id: 'settings', label: 'Settings', icon: Settings },
-      { id: 'roles', label: 'User & Roles', icon: UserCheck },
+      { id: 'device', label: 'Hardware & Telemetry', icon: Cpu },
+      { id: 'settings', label: 'System Settings', icon: Settings },
     ],
   },
 ]

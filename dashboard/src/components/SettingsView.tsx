@@ -69,7 +69,7 @@ export const SettingsView: React.FC<{ isRoles?: boolean }> = ({ isRoles = false 
               </tr>
               <tr>
                 <td className="py-3.5 px-4 font-medium text-slate-700">
-                  Kiosk Operator 01
+                  Verification Officer 01
                 </td>
                 <td className="py-3.5 px-4">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
@@ -77,7 +77,7 @@ export const SettingsView: React.FC<{ isRoles?: boolean }> = ({ isRoles = false 
                   </span>
                 </td>
                 <td className="py-3.5 px-4 text-slate-600">
-                  Verification Kiosk Initiation • Identity Lookup
+                  Identity Verification Initiation • Identity Lookup
                 </td>
                 <td className="py-3.5 px-4 text-right">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -145,7 +145,7 @@ export const SettingsView: React.FC<{ isRoles?: boolean }> = ({ isRoles = false 
 
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Kiosk Auto-Reset Timeout (Seconds)
+            Verification Screen Auto-Reset Interval (Seconds)
           </label>
           <input
             type="number"

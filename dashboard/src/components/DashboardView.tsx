@@ -121,7 +121,7 @@ export const DashboardView: React.FC<{
           <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-700/80 text-brand-200 border border-brand-600 mb-2">
             Dual-Biometric Core Protocol
           </span>
-          <h2 className="text-lg font-bold">Launch Biometric Verification Kiosk</h2>
+          <h2 className="text-lg font-bold">Launch Identity Verification Portal</h2>
           <p className="text-xs text-brand-200 mt-1 max-w-xl">
             Simultaneous multi-modal authentication: NID lookup, camera face crop with OpenCV LBPH matching, and R307S fingerprint template verification.
           </p>
@@ -131,7 +131,7 @@ export const DashboardView: React.FC<{
           onClick={() => onNavigate('kiosk')}
           className="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-brand-900 font-bold text-xs transition-colors shadow-sm whitespace-nowrap flex items-center gap-2"
         >
-          <span>Open Verification Kiosk</span>
+          <span>Open Verification Engine</span>
           <ArrowUpRight className="w-4 h-4" />
         </button>
       </div>

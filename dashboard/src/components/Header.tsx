@@ -22,16 +22,16 @@ const tabMetadata: Record<NavTab, { title: string; subtitle: string }> = {
     subtitle: 'Real-time overview of biometric verifications, hardware status, and citizen analytics',
   },
   kiosk: {
-    title: 'Verification Kiosk',
-    subtitle: 'Dual-biometric identity verification (Face + Fingerprint)',
+    title: 'Identity Verification',
+    subtitle: 'Dual-biometric authentication engine (Face Recognition + Fingerprint Matching)',
   },
   registry: {
-    title: 'Citizen Registry',
+    title: 'Citizen Directory',
     subtitle: 'Verified citizen identity database with enrolled multi-modal credentials',
   },
   registration: {
-    title: 'Citizen Registration',
-    subtitle: 'Step-by-step onboarding for NID bio-data, facial capture, and fingerprint enrolment',
+    title: 'Biometric Enrollment',
+    subtitle: 'Step-by-step onboarding for NID bio-data, facial capture, and hardware fingerprint',
   },
   logs: {
     title: 'Security Audit Logs',
@@ -42,7 +42,7 @@ const tabMetadata: Record<NavTab, { title: string; subtitle: string }> = {
     subtitle: 'Security alarms, unauthorized access attempts, and sensor anomalies',
   },
   device: {
-    title: 'Device Management',
+    title: 'Hardware & Telemetry',
     subtitle: 'ESP32-S3 FreeRTOS telemetry, camera DMA metrics, and sensor diagnostics',
   },
   settings: {
