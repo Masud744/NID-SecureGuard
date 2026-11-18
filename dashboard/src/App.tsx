@@ -64,7 +64,7 @@ export const App: React.FC = () => {
             />
           )}
           {activeTab === 'logs' && <AuditLogs />}
-          {activeTab === 'alerts' && <AlertsView />}
+          {activeTab === 'alerts' && <AlertsView onNavigate={setActiveTab} />}
           {activeTab === 'device' && <DeviceView health={health} />}
           {activeTab === 'settings' && <SettingsView />}
           {activeTab === 'roles' && <SettingsView isRoles />}
