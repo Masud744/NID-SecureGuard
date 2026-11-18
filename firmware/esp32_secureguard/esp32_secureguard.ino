@@ -11,7 +11,7 @@
 #else
 const char* WIFI_SSID           = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD       = "YOUR_WIFI_PASSWORD";
-const char* BACKEND_URL         = "http://YOUR_BACKEND_IP:8000";
+const char* BACKEND_URL         = "https://nid-secureguard-api.onrender.com";
 const char* ESP32_DEVICE_SECRET = "8d4b7bd8c1ea93b8928c4c9e9786848dadb18aa54ba74eae346af847ea62ad4c";
 #endif
 

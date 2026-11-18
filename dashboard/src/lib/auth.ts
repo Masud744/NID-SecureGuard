@@ -193,6 +193,7 @@ export async function signUpOperator(params: {
     email: cleanEmail,
     password: params.password,
     options: {
+      emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}` : undefined,
       data: {
         full_name: isMaster ? MASTER_ADMIN_NAME : params.fullName,
         badge_id: isMaster ? 'SEC-MASTER-01' : params.badgeId,
