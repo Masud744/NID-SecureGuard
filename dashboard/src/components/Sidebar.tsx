@@ -13,8 +13,9 @@ import {
   X,
   LogOut,
   Lock,
+  UserCheck,
 } from 'lucide-react'
-import type { OperatorProfile } from '../lib/auth'
+import { isMasterAdmin, type OperatorProfile } from '../lib/auth'
 
 export type NavTab =
   | 'dashboard'
@@ -26,6 +27,7 @@ export type NavTab =
   | 'device'
   | 'settings'
   | 'roles'
+  | 'approvals'
 
 interface SidebarProps {
   activeTab: NavTab
@@ -33,6 +35,7 @@ interface SidebarProps {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
   alertCount?: number
+  pendingCount?: number
   operator?: OperatorProfile | null
   onSignOut?: () => void
   isKioskMode?: boolean
@@ -91,12 +94,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   setIsOpen,
   alertCount = 0,
+  pendingCount = 0,
   operator,
   onSignOut,
   isKioskMode = false,
   onExitKiosk,
 }) => {
-  const currentSections = isKioskMode ? kioskNavSections : navSections
+  const isMaster = operator?.isMaster || isMasterAdmin(operator?.email)
+
+  const adminNavSections: NavSection[] = [
+    {
+      category: 'Operations',
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'registry', label: 'Citizen Directory', icon: Users },
+      ],
+    },
+    ...(isMaster
+      ? [
+          {
+            category: 'Access Governance',
+            items: [
+              {
+                id: 'approvals' as NavTab,
+                label: 'Operator Approvals',
+                icon: UserCheck,
+                badge: pendingCount > 0 ? pendingCount : undefined,
+              },
+            ],
+          },
+        ]
+      : []),
+    {
+      category: 'Security & Audit',
+      items: [
+        { id: 'logs', label: 'Security Audit Logs', icon: FileText },
+        { id: 'alerts', label: 'Alerts & Incidents', icon: Bell, badge: alertCount > 0 ? alertCount : undefined },
+      ],
+    },
+    {
+      category: 'Infrastructure',
+      items: [
+        { id: 'device', label: 'Hardware & Telemetry', icon: Cpu },
+        { id: 'settings', label: 'System Settings', icon: Settings },
+      ],
+    },
+  ]
+
+  const currentSections = isKioskMode ? kioskNavSections : adminNavSections
   return (
     <>
       {/* Mobile Backdrop */}

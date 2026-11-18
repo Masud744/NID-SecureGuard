@@ -160,17 +160,6 @@ export const CitizenDirectory: React.FC<CitizenDirectoryProps> = ({ onNavigate }
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-brand-700' : ''}`} />
           </button>
-
-          {/* Primary Action Button */}
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('registration')}
-              className="px-3.5 py-2 rounded-xl bg-brand-850 hover:bg-brand-900 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm shadow-brand-950/20 cursor-pointer"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Enroll Citizen</span>
-            </button>
-          )}
         </div>
       </div>
 

@@ -96,3 +96,4 @@ async def reject_operator(body: RejectRequest, request: Request):
         raise
     except Exception as e:
         raise HTTPException(500, f"Failed to reject operator: {str(e)}")
+

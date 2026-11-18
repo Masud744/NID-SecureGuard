@@ -11,7 +11,8 @@ import { DeviceView } from './components/DeviceView'
 import { SettingsView } from './components/SettingsView'
 import { AuthView } from './components/AuthView'
 import { PendingApprovalView } from './components/PendingApprovalView'
-import { fetchHealth } from './lib/api'
+import { OperatorApprovalsView } from './components/OperatorApprovalsView'
+import { fetchHealth, fetchPendingOperators } from './lib/api'
 import { supabase } from './lib/supabase'
 import {
   getCurrentOperator,
@@ -23,12 +24,15 @@ import type { HealthStatus } from './types'
 import { Terminal, Lock, Shield } from 'lucide-react'
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
+  // Default to Hardware Verification Booth (Screenshot 3)
+  const [activeTab, setActiveTab] = useState<NavTab>('kiosk')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [health, setHealth] = useState<HealthStatus | null>(null)
   const [operator, setOperator] = useState<OperatorProfile | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [isKioskMode, setIsKioskMode] = useState(false)
+  const [isKioskMode, setIsKioskMode] = useState(true)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [pendingOperatorCount, setPendingOperatorCount] = useState(0)
   const [alertCount, setAlertCount] = useState<number>(() => {
     try {
       const raw = localStorage.getItem('nid_secureguard_active_alerts_count')
@@ -43,7 +47,10 @@ export const App: React.FC = () => {
     getCurrentOperator()
       .then((op) => {
         setOperator(op)
-        if (op) {
+        if (op && op.isApproved) {
+          setIsKioskMode(false)
+          setActiveTab('dashboard')
+        } else if (op && !op.isApproved) {
           setIsKioskMode(false)
         }
       })
@@ -53,8 +60,14 @@ export const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setOperator(extractProfileFromUser(session.user))
-        setIsKioskMode(false)
+        const prof = extractProfileFromUser(session.user)
+        setOperator(prof)
+        if (prof.isApproved) {
+          setIsKioskMode(false)
+          setActiveTab('dashboard')
+        } else {
+          setIsKioskMode(false)
+        }
       } else {
         setOperator(null)
       }
@@ -63,6 +76,18 @@ export const App: React.FC = () => {
     return () => {
       subscription.unsubscribe()
     }
+  }, [])
+
+  // Poll pending operator authorizations count
+  useEffect(() => {
+    const updatePending = () => {
+      fetchPendingOperators()
+        .then((list) => setPendingOperatorCount(list.length))
+        .catch(() => {})
+    }
+    updatePending()
+    const timer = setInterval(updatePending, 10000)
+    return () => clearInterval(timer)
   }, [])
 
   // Guard Kiosk Mode: in kiosk mode without operator login, strictly allow only 'kiosk' and 'registration'
@@ -89,7 +114,9 @@ export const App: React.FC = () => {
   const handleSignOut = async () => {
     await signOutOperator()
     setOperator(null)
-    setIsKioskMode(false)
+    setIsKioskMode(true)
+    setActiveTab('kiosk')
+    setShowLoginModal(false)
   }
 
   // Loading Screen
@@ -108,22 +135,6 @@ export const App: React.FC = () => {
     )
   }
 
-  // Not authenticated and not in Kiosk Mode -> Show Auth Portal
-  if (!operator && !isKioskMode) {
-    return (
-      <AuthView
-        onAuthenticated={(op) => {
-          setOperator(op)
-          setIsKioskMode(false)
-        }}
-        onLaunchKiosk={() => {
-          setIsKioskMode(true)
-          setActiveTab('kiosk')
-        }}
-      />
-    )
-  }
-
   // Authenticated BUT NOT APPROVED -> Show Pending Approval Lock Screen
   if (operator && !operator.isApproved) {
     return (
@@ -133,8 +144,34 @@ export const App: React.FC = () => {
         onRefresh={async () => {
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
-            setOperator(extractProfileFromUser(user))
+            const updated = extractProfileFromUser(user)
+            setOperator(updated)
+            if (updated.isApproved) {
+              setIsKioskMode(false)
+              setActiveTab('dashboard')
+            }
           }
+        }}
+      />
+    )
+  }
+
+  // Show Auth View (when user explicitly clicks "Admin Portal Sign In")
+  if (showLoginModal && !operator) {
+    return (
+      <AuthView
+        onAuthenticated={(op) => {
+          setOperator(op)
+          setShowLoginModal(false)
+          if (op.isApproved) {
+            setIsKioskMode(false)
+            setActiveTab('dashboard')
+          }
+        }}
+        onLaunchKiosk={() => {
+          setShowLoginModal(false)
+          setIsKioskMode(true)
+          setActiveTab('kiosk')
         }}
       />
     )
@@ -154,10 +191,11 @@ export const App: React.FC = () => {
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         alertCount={alertCount}
+        pendingCount={pendingOperatorCount}
         operator={operator}
         onSignOut={operator ? handleSignOut : undefined}
         isKioskMode={isKioskMode && !operator}
-        onExitKiosk={() => setIsKioskMode(false)}
+        onExitKiosk={() => setShowLoginModal(true)}
       />
 
       {/* Main App Canvas */}
@@ -171,7 +209,7 @@ export const App: React.FC = () => {
               <span className="text-brand-300 hidden sm:inline">• Live Verification & Registration Active</span>
             </div>
             <button
-              onClick={() => setIsKioskMode(false)}
+              onClick={() => setShowLoginModal(true)}
               className="px-3 py-1 rounded-lg bg-brand-800 hover:bg-brand-700 text-emerald-300 text-[11px] font-semibold border border-brand-600/40 transition-colors cursor-pointer flex items-center gap-1.5"
             >
               <Lock className="w-3 h-3 text-emerald-400" />
@@ -187,6 +225,7 @@ export const App: React.FC = () => {
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           operator={operator}
           onSignOut={operator ? handleSignOut : undefined}
+          onOpenLogin={() => setShowLoginModal(true)}
         />
 
         {/* Dynamic Main View */}
@@ -211,6 +250,9 @@ export const App: React.FC = () => {
                 }
               }}
             />
+          )}
+          {activeTab === 'approvals' && (
+            <OperatorApprovalsView operator={operator} />
           )}
           {activeTab === 'logs' && <AuditLogs />}
           {activeTab === 'alerts' && (

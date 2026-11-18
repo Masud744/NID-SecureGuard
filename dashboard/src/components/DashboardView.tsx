@@ -108,11 +108,11 @@ export const DashboardView: React.FC<{
           </button>
 
           <button
-            onClick={() => onNavigate('registration')}
+            onClick={() => onNavigate('registry')}
             className="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-brand-700/70 hover:bg-brand-700 text-white font-semibold text-xs transition-colors border border-brand-600/80 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
           >
-            <UserPlus className="w-3.5 h-3.5 text-brand-200" />
-            <span>Enroll Citizen</span>
+            <Users className="w-3.5 h-3.5 text-brand-200" />
+            <span>Citizen Directory</span>
           </button>
 
           <button

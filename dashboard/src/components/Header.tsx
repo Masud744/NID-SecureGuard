@@ -9,6 +9,7 @@ import {
   LogOut,
   User,
   Shield,
+  Lock,
 } from 'lucide-react'
 import type { HealthStatus } from '../types'
 import type { NavTab } from './Sidebar'
@@ -20,6 +21,7 @@ interface HeaderProps {
   onToggleSidebar: () => void
   operator?: OperatorProfile | null
   onSignOut?: () => void
+  onOpenLogin?: () => void
 }
 
 const tabMetadata: Record<NavTab, { title: string; subtitle: string }> = {
@@ -59,6 +61,10 @@ const tabMetadata: Record<NavTab, { title: string; subtitle: string }> = {
     title: 'User & Roles',
     subtitle: 'Role-based access control, operator privileges, and supervisor authorization',
   },
+  approvals: {
+    title: 'Operator Authorizations & Approvals',
+    subtitle: 'Sovereign root governance for authorizing, monitoring, and revoking terminal operator accounts',
+  },
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -67,6 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSidebar,
   operator,
   onSignOut,
+  onOpenLogin,
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const currentMeta = tabMetadata[activeTab] || tabMetadata.kiosk
@@ -157,51 +164,65 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
 
-          {/* Notifications Bell */}
-          <button className="relative p-2 rounded-xl bg-white border border-slate-200/80 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors">
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
-          </button>
-
-          {/* Profile Circle & Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-8 h-8 rounded-full bg-brand-850 hover:bg-brand-900 text-white font-bold text-xs flex items-center justify-center shadow-xs cursor-pointer transition-colors"
-              title={operator?.fullName || 'User Profile'}
-            >
-              {operator?.fullName ? operator.fullName.slice(0, 2).toUpperCase() : 'OP'}
+          {/* Notifications Bell (when logged in) */}
+          {operator && (
+            <button className="relative p-2 rounded-xl bg-white border border-slate-200/80 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition-colors">
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
             </button>
+          )}
 
-            {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100 text-xs">
-                <div className="p-2.5 border-b border-slate-100">
-                  <div className="font-bold text-slate-800 truncate">
-                    {operator?.fullName || 'Station Operator'}
+          {/* Profile Circle OR Admin Login Button */}
+          {operator ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="w-8 h-8 rounded-full bg-brand-850 hover:bg-brand-900 text-white font-bold text-xs flex items-center justify-center shadow-xs cursor-pointer transition-colors"
+                title={operator.fullName || 'User Profile'}
+              >
+                {operator.fullName ? operator.fullName.slice(0, 2).toUpperCase() : 'OP'}
+              </button>
+
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                  <div className="p-2.5 border-b border-slate-100">
+                    <div className="font-bold text-slate-800 truncate">
+                      {operator.fullName || 'Station Operator'}
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono truncate">
+                      {operator.email || 'kiosk@secureguard.local'}
+                    </div>
+                    <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-50 text-brand-800 border border-brand-200">
+                      {operator.role === 'super_admin' ? 'Super Admin' : 'Station Operator'}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-400 font-mono truncate">
-                    {operator?.email || 'kiosk@secureguard.local'}
-                  </div>
-                  <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-50 text-brand-800 border border-brand-200">
-                    {operator?.role === 'super_admin' ? 'Super Admin' : 'Station Operator'}
-                  </div>
+
+                  {onSignOut && (
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false)
+                        onSignOut()
+                      }}
+                      className="w-full mt-1 p-2 rounded-xl text-rose-700 hover:bg-rose-50 flex items-center space-x-2 font-semibold transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out of Console</span>
+                    </button>
+                  )}
                 </div>
-
-                {onSignOut && (
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false)
-                      onSignOut()
-                    }}
-                    className="w-full mt-1 p-2 rounded-xl text-rose-700 hover:bg-rose-50 flex items-center space-x-2 font-semibold transition-colors cursor-pointer"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out of Console</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            onOpenLogin && (
+              <button
+                onClick={onOpenLogin}
+                className="px-3.5 py-1.5 rounded-xl bg-brand-900 hover:bg-brand-850 text-emerald-300 hover:text-white text-xs font-bold border border-brand-700/60 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
+              >
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Admin Portal Sign In</span>
+              </button>
+            )
+          )}
         </div>
       </div>
     </header>

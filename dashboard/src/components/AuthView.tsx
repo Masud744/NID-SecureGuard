@@ -277,7 +277,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
 
             {/* ================= SIGN IN TAB ================= */}
             {tab === 'signin' && (
-              <form onSubmit={handleSignIn} className="space-y-4">
+              <form onSubmit={handleSignIn} autoComplete="off" className="space-y-4">
+                {/* Decoy inputs to neutralize browser autofill heuristics */}
+                <input type="text" name="decoy_user" tabIndex={-1} style={{ display: 'none' }} aria-hidden="true" />
+                <input type="password" name="decoy_pass" tabIndex={-1} style={{ display: 'none' }} aria-hidden="true" />
+
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Official Service Email
@@ -286,6 +290,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                     <input
                       type="email"
+                      name="official_operator_email"
+                      autoComplete="off"
+                      readOnly
+                      onFocus={(e) => e.target.removeAttribute('readOnly')}
                       required
                       placeholder="operator@secureguard.gov.bd"
                       value={signInEmail}
@@ -303,6 +311,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      name="official_operator_password"
+                      autoComplete="new-password"
+                      readOnly
+                      onFocus={(e) => e.target.removeAttribute('readOnly')}
                       required
                       placeholder="••••••••••••"
                       value={signInPassword}
@@ -401,6 +413,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                         type={showPassword ? 'text' : 'password'}
                         required
                         autoComplete="new-password"
+                        readOnly
+                        onFocus={(e) => e.target.removeAttribute('readOnly')}
                         placeholder="••••••••••••"
                         value={signUpData.password}
                         onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
@@ -426,6 +440,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                         type={showConfirmPassword ? 'text' : 'password'}
                         required
                         autoComplete="new-password"
+                        readOnly
+                        onFocus={(e) => e.target.removeAttribute('readOnly')}
                         placeholder="••••••••••••"
                         value={signUpData.confirmPassword}
                         onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}

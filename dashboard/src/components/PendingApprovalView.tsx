@@ -115,3 +115,4 @@ export const PendingApprovalView: React.FC<PendingApprovalViewProps> = ({
     </div>
   )
 }
+
