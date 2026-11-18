@@ -54,3 +54,4 @@ async def get_snapshot(request: Request):
     if bridge.latest_frame:
         return Response(content=bridge.latest_frame, media_type="image/jpeg")
     raise HTTPException(503, "No tunneled ESP32 connected")
+
