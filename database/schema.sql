@@ -89,12 +89,15 @@ create policy "admin_security_logs_all" on security_logs
 -- Auto-update updated_at on users
 
 create or replace function update_updated_at()
-returns trigger as $$
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
 begin
     new.updated_at = now();
     return new;
 end;
-$$ language plpgsql;
+$$;
 
 drop trigger if exists trg_users_updated_at on users;
 create trigger trg_users_updated_at
