@@ -170,9 +170,9 @@ export const VerificationKiosk: React.FC = () => {
       <div className="bg-white rounded-2xl py-3 px-5 sm:px-6 border border-slate-200/80 shadow-xs flex items-center justify-center">
         <div className="flex items-center space-x-3 sm:space-x-8 max-w-3xl w-full justify-between">
           {/* Step 1 */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
             <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors shrink-0 ${
                 currentStep >= 1 ? 'bg-brand-700 text-white' : 'border border-slate-300 text-slate-400'
               }`}
             >
@@ -180,19 +180,20 @@ export const VerificationKiosk: React.FC = () => {
             </div>
             <span
               className={`text-xs font-semibold ${
-                currentStep >= 1 ? 'text-brand-900' : 'text-slate-400'
+                currentStep >= 1 ? 'text-brand-900 font-bold' : 'text-slate-400'
               }`}
             >
-              1. Enter National ID
+              <span className="hidden sm:inline">1. Enter National ID</span>
+              <span className="sm:hidden">1. NID</span>
             </span>
           </div>
 
-          <div className="flex-1 h-0.5 bg-slate-200 mx-2" />
+          <div className="flex-1 h-0.5 bg-slate-200 mx-1 sm:mx-2 min-w-[12px]" />
 
           {/* Step 2 */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
             <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors shrink-0 ${
                 currentStep >= 2 ? 'bg-brand-850 text-white' : 'border border-slate-300 text-slate-400'
               }`}
             >
@@ -203,16 +204,17 @@ export const VerificationKiosk: React.FC = () => {
                 currentStep >= 2 ? 'text-slate-800' : 'text-slate-400'
               }`}
             >
-              2. Dual-Biometric Verification
+              <span className="hidden sm:inline">2. Dual-Biometric Verification</span>
+              <span className="sm:hidden">2. Biometrics</span>
             </span>
           </div>
 
-          <div className="flex-1 h-0.5 bg-slate-200 mx-2" />
+          <div className="flex-1 h-0.5 bg-slate-200 mx-1 sm:mx-2 min-w-[12px]" />
 
           {/* Step 3 */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
             <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors shrink-0 ${
                 currentStep === 3
                   ? isGranted
                     ? 'bg-emerald-600 text-white'
@@ -227,7 +229,8 @@ export const VerificationKiosk: React.FC = () => {
                 currentStep === 3 ? 'text-slate-800 font-bold' : 'text-slate-400'
               }`}
             >
-              3. Biometric Decision
+              <span className="hidden sm:inline">3. Biometric Decision</span>
+              <span className="sm:hidden">3. Decision</span>
             </span>
           </div>
         </div>

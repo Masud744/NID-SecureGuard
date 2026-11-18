@@ -506,7 +506,7 @@ export const CitizenDirectory: React.FC<CitizenDirectoryProps> = ({ onNavigate }
             </div>
 
             {/* Modal Body */}
-            <div className="p-5 space-y-4 text-xs">
+            <div className="p-5 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
               {/* Biographical Details */}
               <div className="space-y-2 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
                 <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">

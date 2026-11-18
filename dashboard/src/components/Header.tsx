@@ -71,27 +71,27 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-canvas border-b border-slate-200/80 px-4 sm:px-6 py-4 sticky top-0 z-30 backdrop-blur-sm bg-canvas/90">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Left: Mobile Toggle & Page Title */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 min-w-0">
           <button
             onClick={onToggleSidebar}
-            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors lg:hidden"
+            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors lg:hidden shrink-0 cursor-pointer"
             aria-label="Toggle navigation"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-tight">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight leading-tight truncate">
               {currentMeta.title}
             </h1>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
+            <p className="text-xs text-slate-500 font-medium mt-0.5 truncate sm:whitespace-normal">
               {currentMeta.subtitle}
             </p>
           </div>
         </div>
 
         {/* Right: Telemetry Badges & Quick Actions */}
-        <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
+        <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-0.5 max-w-full shrink-0">
           {/* ESP32 Status */}
           <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-2 text-xs">
             <Cpu className="w-4 h-4 text-slate-500" />

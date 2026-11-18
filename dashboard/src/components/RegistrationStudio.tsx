@@ -152,7 +152,7 @@ export const RegistrationStudio: React.FC<RegistrationStudioProps> = ({
 
       {/* 2. Top Interactive Step Progress Tracker */}
       <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-xs">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
           {/* Step 1 Pill */}
           <div
             className={`p-3 rounded-xl border flex items-center gap-3 transition-colors ${
@@ -730,7 +730,7 @@ export const RegistrationStudio: React.FC<RegistrationStudioProps> = ({
                     step > 1 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
                   }`}
                 >
-                  {step > 1 ? '✓' : '1'}
+                  {step > 1 ? <Check className="w-2.5 h-2.5 text-white" /> : '1'}
                 </div>
                 <span className={step > 1 ? 'font-semibold text-slate-800' : 'text-slate-500'}>
                   Biographical Record Creation
@@ -743,7 +743,7 @@ export const RegistrationStudio: React.FC<RegistrationStudioProps> = ({
                     step > 2 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
                   }`}
                 >
-                  {step > 2 ? '✓' : '2'}
+                  {step > 2 ? <Check className="w-2.5 h-2.5 text-white" /> : '2'}
                 </div>
                 <span className={step > 2 ? 'font-semibold text-slate-800' : 'text-slate-500'}>
                   5-Frame OpenCV LBPH Facial Model
@@ -756,7 +756,7 @@ export const RegistrationStudio: React.FC<RegistrationStudioProps> = ({
                     step > 3 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
                   }`}
                 >
-                  {step > 3 ? '✓' : '3'}
+                  {step > 3 ? <Check className="w-2.5 h-2.5 text-white" /> : '3'}
                 </div>
                 <span className={step > 3 ? 'font-semibold text-slate-800' : 'text-slate-500'}>
                   Dual-Scan Optical Fingerprint Template
