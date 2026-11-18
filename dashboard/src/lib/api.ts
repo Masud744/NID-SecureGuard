@@ -1,7 +1,7 @@
 import type { HealthStatus, User, VerifyResponse, EnrollmentStatus } from '../types'
 import { supabase } from './supabase'
 
-const API_BASE = ''
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }

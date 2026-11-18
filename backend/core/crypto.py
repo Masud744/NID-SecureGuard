@@ -199,3 +199,4 @@ class AuditChainer:
             prev_hash = entry.get("chain_hash") or self.compute_chain_hash(prev_hash, entry)
 
         return True, f"Cryptographic integrity verified across {len(logs)} ledger entries"
+

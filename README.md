@@ -13,7 +13,7 @@
 > **An end-to-end Cyber-Physical National Identity Verification and Access Control Platform coupling high-speed edge hardware (ESP32-S3, OV2640 camera DMA, Grow R307S optical fingerprint sensor) with an OpenCV LBPH facial recognition engine, Supabase PostgreSQL audit ledger, sovereign root operator governance, and standalone hardware booth kiosk isolation.**
 
 > [!NOTE]
-> **Complete Visual Demonstration Gallery:** For the complete 14-asset visual showcase—including full-resolution hardware station kiosk screens, dual-biometric enrollment studio, forensic security audit inspector, live ESP32-S3 FreeRTOS telemetry diagnostics, and physical silicon breadboard photographs—see the [Complete Visual Demonstration Gallery (Section 11)](#11-complete-visual-demonstration-gallery-all-14-assets).
+> **Complete Visual Demonstration Gallery:** For the complete 14-asset visual showcase—including full-resolution hardware station kiosk screens, dual-biometric enrollment studio, forensic security audit inspector, live ESP32-S3 FreeRTOS telemetry diagnostics, and physical silicon breadboard photographs—see the [Complete Visual Demonstration Gallery (Section 12)](#12-complete-visual-demonstration-gallery-all-14-assets).
 
 ---
 
@@ -37,10 +37,11 @@
    - [Tamper-Evident Cryptographic Audit Ledger](#74-tamper-evident-cryptographic-audit-ledger)
 8. [Installation & Local Setup Guide](#8-installation--local-setup-guide)
 9. [Automated Verification & Security Test Suite](#9-automated-verification--security-test-suite)
-10. [Project & Repository Structure](#10-project--repository-structure)
-11. [Complete Visual Demonstration Gallery (All 14 Assets)](#11-complete-visual-demonstration-gallery-all-14-assets)
-12. [Author & Contact Information](#12-author--contact-information)
-13. [License](#license)
+10. [Cloud Deployment Architecture (Render.com)](#10-cloud-deployment-architecture-rendercom)
+11. [Project & Repository Structure](#11-project--repository-structure)
+12. [Complete Visual Demonstration Gallery (All 14 Assets)](#12-complete-visual-demonstration-gallery-all-14-assets)
+13. [Author & Contact Information](#13-author--contact-information)
+14. [License](#license)
 
 ---
 
@@ -405,14 +406,62 @@ curl -s http://127.0.0.1:8000/api/v1/logs/verify-chain
 
 ---
 
-## 10. Project & Repository Structure
+## 10. Cloud Deployment Architecture (Render.com)
+
+The entire NID SecureGuard platform is orchestrated for automated unified monorepo deployment on **Render.com** (Free Tier):
+
+```
++---------------------------------------------------------------------------------------------------+
+|                                     RENDER.COM CLOUD TOPOLOGY                                     |
+|                                                                                                   |
+|  [ Citizen / Officer Browser ]                  [ Physical ESP32 Station ]                        |
+|               |                                              |                                    |
+|               v HTTPS                                        v HTTPS (mbedtls HMAC Signed)        |
+|  +-------------------------------------+        +----------------------------------------------+  |
+|  |     nid-secureguard-dashboard       |        |             nid-secureguard-api              |  |
+|  |   • Render Static Site (Global CDN) |───────►|   • Render Web Service (FastAPI / Uvicorn)   |  |
+|  |   • Auto-Deploys from /dashboard    |  API   |   • Headless OpenCV LBPH Recognition Engine  |  |
+|  |   • Never Sleeps (100% Uptime)      |  Calls |   • Port: $PORT (Auto-Assigned by Render)    |  |
+|  +-------------------------------------+        +----------------------------------------------+  |
+|                                                                  |                                |
+|                                                                  v Encrypted PostgreSQL TLS       |
+|                                                 +----------------------------------------------+  |
+|                                                 |          Supabase Cloud Database             |  |
+|                                                 |   • AES-256-GCM Encrypted Citizen PII        |  |
+|                                                 |   • Cryptographic Hash-Chained Audit Ledger  |  |
+|                                                 +----------------------------------------------+  |
++---------------------------------------------------------------------------------------------------+
+```
+
+### 10.1 Automated Monorepo Blueprint (`render.yaml`)
+Both frontend and backend are declared via the repository's root [render.yaml](file:///home/shahriar-alom-masud/Projects/Secure%20Gaurd/render.yaml) specification:
+
+1. Log in to [Render.com](https://render.com) and navigate to **Blueprints**.
+2. Click **New Blueprint Instance** and connect your `Masud744/NID-SecureGuard` repository.
+3. Render automatically provisions:
+   - **`nid-secureguard-api`** (Python 3.12 Web Service)
+   - **`nid-secureguard-dashboard`** (Static Site with SPA rewrite rules)
+4. Populate the environment variables from your `.env`:
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY`
+   - `DATA_ENCRYPTION_KEY`, `BLIND_INDEX_PEPPER`, `ESP32_DEVICE_SECRET`, `AUDIT_LOG_SECRET`, `KIOSK_API_KEY`
+5. Set `VITE_API_BASE_URL` on the static site to the assigned API URL: `https://nid-secureguard-api.onrender.com`.
+
+### 10.2 Zero Cold-Start Keep-Alive Protocol
+Because free web services spin down after 15 minutes of inactivity:
+- Register a free HTTP probe at [cron-job.org](https://cron-job.org) or [UptimeRobot](https://uptimerobot.com).
+- Configure a `GET` ping every 10 minutes targeting `https://nid-secureguard-api.onrender.com/health`.
+- This ensures the Python runtime remains pre-warmed 24/7 with zero initial latency.
+
+---
+
+## 11. Project & Repository Structure
 
 ```
 NID-SecureGuard/
 ├── backend/                        # FastAPI Central Security Gateway
 │   ├── main.py                     # Application entry point, CORS & router registration
 │   ├── config.py                   # Pydantic environment configuration
-│   ├── requirements.txt            # Python dependencies (OpenCV, FastAPI, Supabase, Uvicorn, Cryptography)
+│   ├── requirements.txt            # Python dependencies (OpenCV Headless, FastAPI, Supabase, Uvicorn, Cryptography)
 │   ├── core/                       # Core security & cryptography
 │   │   ├── crypto.py               # AES-256-GCM, Blind Index, Hardware HMAC & Audit Chainer
 │   │   ├── security.py             # Sovereign Master RBAC & Hardware Signature Guards
@@ -459,6 +508,8 @@ NID-SecureGuard/
 │   │   │   ├── auth.ts             # Supabase Auth helper & Master Admin rules
 │   │   │   └── supabase.ts         # Supabase client initialization
 │   │   └── types/index.ts          # Global TypeScript interfaces
+│   ├── public/
+│   │   └── _redirects              # Static site SPA rewrite rule
 │   ├── package.json                # Frontend dependencies
 │   └── vite.config.ts              # Vite proxy configuration
 ├── database/                       # Database Architecture & DDL
@@ -469,6 +520,7 @@ NID-SecureGuard/
 │       ├── esp32_secureguard.ino   # FreeRTOS dual-core tasks, mbedtls HMAC & camera DMA
 │       └── README.md               # Hardware wiring & flashing guide
 ├── Images/                         # 14 Complete Visual Showcase Assets
+├── render.yaml                     # Render.com Unified Monorepo Blueprint
 ├── .env.example                    # Environment variable template
 ├── .gitignore                      # Git artifact exclusions
 └── README.md                       # Master Technical Documentation
@@ -476,9 +528,9 @@ NID-SecureGuard/
 
 ---
 
-## 11. Complete Visual Demonstration Gallery (All 14 Assets)
+## 12. Complete Visual Demonstration Gallery (All 14 Assets)
 
-### 11.1 Hardware Station Kiosk & Citizen Verification
+### 12.1 Hardware Station Kiosk & Citizen Verification
 | Identity Verification Kiosk (Standby & Prompt) | Biometric Clearance Granted (Decrypted Record) |
 | :---: | :---: |
 | ![Identity Verification Kiosk Standby](Images/kiosk_verification.png) | ![Biometric Clearance Granted](Images/kiosk_verification_granted.png) |
@@ -489,37 +541,37 @@ NID-SecureGuard/
 | ![Biometric Enrollment Studio](Images/kiosk_enrollment.png) |
 | *3-step multi-modal citizen onboarding: biographical data, 5-frame LBPH facial capture, and optical fingerprint registration* |
 
-### 11.2 Central Command & Cloud Database Ledger
+### 12.2 Central Command & Cloud Database Ledger
 | System Command Dashboard | Cloud Database Ledger Console |
 | :---: | :---: |
 | ![System Dashboard](Images/dashboard_overview.png) | ![Cloud Database Ledger Console](Images/database_console.png) |
 | *Real-time biometric analytics, verification traffic charts, live ESP32 camera viewport, and FreeRTOS telemetry metrics* | *Supabase PostgreSQL `security_logs` ledger detailing biometric confidence scores ($\tau$), NID bindings, and verification verdicts* |
 
-### 11.3 Citizen Directory & Security Audit Intelligence
+### 12.3 Citizen Directory & Security Audit Intelligence
 | Verified Citizen Directory | Immutable Security Audit Ledger |
 | :---: | :---: |
 | ![Citizen Directory](Images/citizen_directory.png) | ![Security Audit Logs](Images/audit_logs.png) |
 | *National citizen identity registry with biographical profile cards, enrolled biometric badges, and verification history* | *Cryptographic audit trail with 1-click forensic inspector, NID copy utilities, decision filters, and CSV export* |
 
-### 11.4 Security Alarms, Incidents & System Parameters
+### 12.4 Security Alarms, Incidents & System Parameters
 | Real-Time Alerts & Incidents Center | System Parameters & Biometric Thresholds |
 | :---: | :---: |
 | ![Alerts & Incidents](Images/alerts_incidents.png) | ![System Settings](Images/system_settings.png) |
 | *Live alarm monitor tracking unauthorized access attempts, optical sensor timeouts, and persistent incident resolution* | *Biometric confidence thresholds ($\tau$), hardware timeouts, GPIO LED toggles, and Cloudflare tunnel parameters* |
 
-### 11.5 Hardware Diagnostics & FreeRTOS Telemetry
+### 12.5 Hardware Diagnostics & FreeRTOS Telemetry
 | Hardware & Telemetry Diagnostic Console |
 | :---: |
 | ![Hardware Telemetry](Images/hardware_telemetry.png) |
 | *ESP32-S3 FreeRTOS dual-core task monitor, R307S UART ping meter, live camera latency meter, and GPIO bus matrix* |
 
-### 11.6 Access Control Portals & Official Email Handshake
+### 12.6 Access Control Portals & Official Email Handshake
 | Operator Sign-In Gateway | Operator Provisioning Portal | Official Email Verification Gate |
 | :---: | :---: | :---: |
 | ![Operator Sign In](Images/auth_login.png) | ![Operator Registration](Images/auth_register.png) | ![Email Verification](Images/email_verification.png) |
 | *Encrypted login portal with anti-autofill protection* | *Officer provisioning with badge ID & station assignment* | *Gmail confirmation handshake gate preventing unauthorized bypass* |
 
-### 11.7 Physical Silicon Prototype & Cyber-Physical Testbed
+### 12.7 Physical Silicon Prototype & Cyber-Physical Testbed
 | ESP32-S3 Cyber-Physical Testbed Bench Photograph |
 | :---: |
 | ![Physical Hardware Prototype](Images/hardware_prototype.jpeg) |
@@ -527,7 +579,7 @@ NID-SecureGuard/
 
 ---
 
-## 12. Author & Contact Information
+## 13. Author & Contact Information
 
 **Shahriar Alom Masud**  
 B.Sc. Engg. in IoT & Robotics Engineering  
@@ -538,6 +590,6 @@ University of Frontier Technology, Bangladesh
 
 ---
 
-## 13. License
+## 14. License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

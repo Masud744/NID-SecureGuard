@@ -1,0 +1,48 @@
+services:
+  # 1. FastAPI Central Processing & Security Backend
+  - type: web
+    name: nid-secureguard-api
+    runtime: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
+      - key: BLIND_INDEX_PEPPER
+        sync: false
+      - key: ESP32_DEVICE_SECRET
+        sync: false
+      - key: AUDIT_LOG_SECRET
+        sync: false
+      - key: KIOSK_API_KEY
+        sync: false
+      - key: FACE_CONFIDENCE_THRESHOLD
+        value: "85.0"
+      - key: FACE_SAMPLES_COUNT
+        value: "20"
+
+  # 2. React 19 + TypeScript Kiosk & Admin Dashboard
+  - type: static
+    name: nid-secureguard-dashboard
+    region: frankfurt
+    plan: free
+    rootDir: dashboard
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false

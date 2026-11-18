@@ -54,7 +54,7 @@ app.add_middleware(
         "http://localhost:8000",
         "http://127.0.0.1:8000",
     ],
-    allow_origin_regex=r"^https?://([a-zA-Z0-9-]+\.)?trycloudflare\.com$",
+    allow_origin_regex=r"^https?://([a-zA-Z0-9-]+\.)?(trycloudflare\.com|onrender\.com)$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],

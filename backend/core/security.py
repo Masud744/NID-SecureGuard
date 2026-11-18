@@ -161,3 +161,4 @@ async def verify_hardware_hmac(
             detail="Hardware cryptographic authentication failed: signature mismatch or replay detected",
         )
     return True
+
