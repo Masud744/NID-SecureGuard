@@ -18,6 +18,11 @@ class UserResponse(BaseModel):
     full_name: str
     status: str
     created_at: datetime
+    date_of_birth: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    face_profiles: Optional[list[dict] | dict] = None
+    fingerprint_records: Optional[list[dict] | dict] = None
 
 
 class VerifyRequest(BaseModel):

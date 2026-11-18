@@ -54,7 +54,9 @@ export const App: React.FC = () => {
             <DashboardView health={health} onNavigate={setActiveTab} />
           )}
           {activeTab === 'kiosk' && <VerificationKiosk />}
-          {activeTab === 'registry' && <CitizenDirectory />}
+          {activeTab === 'registry' && (
+            <CitizenDirectory onNavigate={setActiveTab} />
+          )}
           {activeTab === 'registration' && (
             <RegistrationStudio onRegistered={() => setActiveTab('registry')} />
           )}

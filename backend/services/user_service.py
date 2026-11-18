@@ -31,7 +31,7 @@ class UserService:
     async def get_users(self, limit: int = 50, offset: int = 0) -> list[dict]:
         resp = (
             self.db.table("users")
-            .select("*")
+            .select("*, face_profiles(*), fingerprint_records(*)")
             .range(offset, offset + limit - 1)
             .order("created_at", desc=True)
             .execute()
