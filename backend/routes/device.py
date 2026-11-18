@@ -1,6 +1,10 @@
-from fastapi import APIRouter, HTTPException, Query, Request
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel
+
+from core.security import verify_hardware_hmac
 
 router = APIRouter(prefix="/api/v1/device", tags=["Device Bridge"])
 
@@ -22,27 +26,39 @@ class DeviceResultPayload(BaseModel):
 
 
 @router.post("/poll")
-async def poll_command(body: HeartbeatPayload, request: Request):
+async def poll_command(
+    body: HeartbeatPayload,
+    request: Request,
+    _hmac_verified: Annotated[bool, Depends(verify_hardware_hmac)] = False,
+):
     bridge = request.app.state.device_bridge
     cmd = await bridge.poll(body.model_dump())
-    return {"command": cmd}
+    return {"command": cmd, "hmac_verified": _hmac_verified}
 
 
 @router.post("/frame")
-async def upload_frame(request: Request, cmd_id: str = Query(...)):
+async def upload_frame(
+    request: Request,
+    cmd_id: str = Query(...),
+    _hmac_verified: Annotated[bool, Depends(verify_hardware_hmac)] = False,
+):
     bridge = request.app.state.device_bridge
     jpg_bytes = await request.body()
     if not jpg_bytes:
         raise HTTPException(400, "Empty frame body")
     accepted = bridge.submit_frame(cmd_id, jpg_bytes)
-    return {"accepted": accepted, "bytes": len(jpg_bytes)}
+    return {"accepted": accepted, "bytes": len(jpg_bytes), "hmac_verified": _hmac_verified}
 
 
 @router.post("/result")
-async def submit_result(body: DeviceResultPayload, request: Request):
+async def submit_result(
+    body: DeviceResultPayload,
+    request: Request,
+    _hmac_verified: Annotated[bool, Depends(verify_hardware_hmac)] = False,
+):
     bridge = request.app.state.device_bridge
     accepted = bridge.submit_result(body.cmd_id, body.model_dump())
-    return {"accepted": accepted}
+    return {"accepted": accepted, "hmac_verified": _hmac_verified}
 
 
 @router.get("/status")
@@ -95,4 +111,3 @@ async def detect_current_face(request: Request):
         return {"face_detected": False, "confidence": 0.0}
 
     return {"face_detected": True, "confidence": 86.4}
-

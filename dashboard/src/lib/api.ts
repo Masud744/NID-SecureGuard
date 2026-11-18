@@ -1,6 +1,20 @@
 import type { HealthStatus, User, VerifyResponse, EnrollmentStatus } from '../types'
+import { supabase } from './supabase'
 
 const API_BASE = ''
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  try {
+    const { data } = await supabase.auth.getSession()
+    if (data?.session?.access_token) {
+      headers['Authorization'] = `Bearer ${data.session.access_token}`
+    }
+  } catch {
+    // fallback for unauthenticated kiosk mode
+  }
+  return headers
+}
 
 export async function fetchHealth(): Promise<HealthStatus> {
   const res = await fetch(`${API_BASE}/health`)
@@ -9,14 +23,16 @@ export async function fetchHealth(): Promise<HealthStatus> {
 }
 
 export async function fetchUsers(): Promise<User[]> {
-  const res = await fetch(`${API_BASE}/api/v1/users`)
+  const headers = await getAuthHeaders()
+  const res = await fetch(`${API_BASE}/api/v1/users`, { headers })
   if (!res.ok) throw new Error('Failed to load users')
   return res.json()
 }
 
 export async function fetchLogs(limit: number = 20): Promise<import('../types').SecurityLog[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/logs?limit=${limit}`)
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/v1/logs?limit=${limit}`, { headers })
     if (res.ok) {
       return await res.json()
     }
@@ -26,6 +42,29 @@ export async function fetchLogs(limit: number = 20): Promise<import('../types').
   return []
 }
 
+export async function verifyLogChain(): Promise<{
+  valid: boolean
+  message: string
+  total_logs: number
+  sealed_logs: number
+  status: 'intact' | 'tampered'
+}> {
+  try {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/v1/logs/verify-chain`, { headers })
+    if (res.ok) return await res.json()
+  } catch (err) {
+    console.error('Failed to verify audit log chain:', err)
+  }
+  return {
+    valid: false,
+    message: 'Cryptographic ledger probe failed',
+    total_logs: 0,
+    sealed_logs: 0,
+    status: 'tampered',
+  }
+}
+
 export async function createUser(data: {
   nid_number: string
   full_name: string
@@ -33,9 +72,10 @@ export async function createUser(data: {
   address?: string
   phone?: string
 }): Promise<User> {
+  const headers = await getAuthHeaders()
   const res = await fetch(`${API_BASE}/api/v1/users`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -46,9 +86,10 @@ export async function createUser(data: {
 }
 
 export async function enrollFace(userId: string, sampleCount: number = 10): Promise<EnrollmentStatus> {
+  const headers = await getAuthHeaders()
   const res = await fetch(`${API_BASE}/api/v1/enroll/face/${userId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ sample_count: sampleCount }),
   })
   if (!res.ok) {
@@ -59,9 +100,10 @@ export async function enrollFace(userId: string, sampleCount: number = 10): Prom
 }
 
 export async function enrollFingerprint(userId: string, templateId: number): Promise<EnrollmentStatus> {
+  const headers = await getAuthHeaders()
   const res = await fetch(`${API_BASE}/api/v1/enroll/fingerprint/${userId}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ template_id: templateId }),
   })
   if (!res.ok) {
@@ -72,9 +114,10 @@ export async function enrollFingerprint(userId: string, templateId: number): Pro
 }
 
 export async function verifyIdentity(nidNumber: string): Promise<VerifyResponse> {
+  const headers = await getAuthHeaders()
   const res = await fetch(`${API_BASE}/api/v1/verify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ nid_number: nidNumber }),
   })
   if (!res.ok) {
@@ -111,7 +154,8 @@ export interface OperatorRecord {
 
 export async function fetchPendingOperators(): Promise<OperatorRecord[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/operators/pending`)
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/v1/operators/pending`, { headers })
     if (res.ok) return await res.json()
   } catch (err) {
     console.error('Failed to fetch pending operators:', err)
@@ -121,7 +165,8 @@ export async function fetchPendingOperators(): Promise<OperatorRecord[]> {
 
 export async function fetchApprovedOperators(): Promise<OperatorRecord[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/operators/approved`)
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/v1/operators/approved`, { headers })
     if (res.ok) return await res.json()
   } catch (err) {
     console.error('Failed to fetch approved operators:', err)
@@ -130,21 +175,21 @@ export async function fetchApprovedOperators(): Promise<OperatorRecord[]> {
 }
 
 export async function apiApproveOperator(userId: string): Promise<boolean> {
+  const headers = await getAuthHeaders()
   const res = await fetch(`${API_BASE}/api/v1/operators/approve`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ user_id: userId }),
   })
   return res.ok
 }
 
 export async function apiRejectOperator(userId: string): Promise<boolean> {
+  const headers = await getAuthHeaders()
   const res = await fetch(`${API_BASE}/api/v1/operators/reject`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ user_id: userId }),
   })
   return res.ok
 }
-
-

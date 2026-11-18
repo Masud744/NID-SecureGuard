@@ -4,6 +4,7 @@
 create table if not exists users (
     id              uuid primary key default gen_random_uuid(),
     nid_number      text unique not null,
+    nid_hash        text,
     full_name       text not null,
     date_of_birth   date,
     address         text,
@@ -42,6 +43,9 @@ create table if not exists security_logs (
     access_decision         text not null
                                 check (access_decision in ('granted', 'denied')),
     failure_reason          text,
+    signature               text,
+    chain_hash              text,
+    prev_hash               text,
     ip_address              text,
     created_at              timestamptz default now()
 );
@@ -50,22 +54,23 @@ create table if not exists security_logs (
 -- Indexes
 
 create index if not exists idx_users_nid_number  on users(nid_number);
+create index if not exists idx_users_nid_hash    on users(nid_hash);
 create index if not exists idx_users_status       on users(status);
 create index if not exists idx_logs_user_id       on security_logs(user_id);
 create index if not exists idx_logs_decision      on security_logs(access_decision);
 create index if not exists idx_logs_created_at    on security_logs(created_at desc);
+create index if not exists idx_logs_chain_hash    on security_logs(chain_hash);
 
 
 -- Row Level Security
 --
--- We enable RLS on every table. The authenticated role gets full access
--- (admin dashboard). The service_role key bypasses RLS automatically in
--- Supabase, so the backend can read/write without extra policies.
+-- We enable RLS on every table. The authenticated role gets access governed by policies.
+-- The service_role key bypasses RLS automatically in Supabase, so the backend can read/write.
 
-alter table users              enable row level security;
-alter table face_profiles      enable row level security;
+alter table users               enable row level security;
+alter table face_profiles       enable row level security;
 alter table fingerprint_records enable row level security;
-alter table security_logs      enable row level security;
+alter table security_logs       enable row level security;
 
 -- Authenticated role policies (for admin dashboard access)
 

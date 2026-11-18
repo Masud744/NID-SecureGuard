@@ -1,6 +1,9 @@
 import logging
 from datetime import datetime, timezone
 
+from config import settings
+from core.crypto import AuditChainer
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,6 +20,8 @@ class AuthService:
         self.fp = fp_service
         self.supabase = supabase
         self.config = config
+        self.chainer = AuditChainer(config.AUDIT_LOG_SECRET)
+        self._last_chain_hash: str | None = None
 
     async def verify_identity(
         self, nid_number: str, stream_url: str, ip_address: str | None = None
@@ -159,6 +164,30 @@ class AuthService:
         ip_address: str | None = None,
     ):
         try:
+            # Build entry dictionary for cryptographic signing & hash chaining
+            entry_data = {
+                "user_id": user_id,
+                "nid_number": nid_number,
+                "face_result": face_result,
+                "face_confidence": face_confidence,
+                "fingerprint_result": fingerprint_result,
+                "fingerprint_template_id": fingerprint_template_id,
+                "access_decision": decision,
+                "raw_reason": reason,
+                "ip_address": ip_address,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            # Cryptographic signature
+            signature = self.chainer.sign_log(entry_data)
+            prev_hash = self._last_chain_hash
+            chain_hash = self.chainer.compute_chain_hash(prev_hash, entry_data)
+            self._last_chain_hash = chain_hash
+
+            # Embed cryptographic seal into failure_reason envelope
+            seal = f"SIG:{signature}#CHAIN:{chain_hash}#PREV:{prev_hash or 'GENESIS'}"
+            envelope_reason = f"{reason} | {seal}" if reason else seal
+
             self.supabase.table("security_logs").insert({
                 "user_id": user_id,
                 "nid_number": nid_number,
@@ -167,11 +196,11 @@ class AuthService:
                 "fingerprint_result": fingerprint_result,
                 "fingerprint_template_id": fingerprint_template_id,
                 "access_decision": decision,
-                "failure_reason": reason,
+                "failure_reason": envelope_reason,
                 "ip_address": ip_address,
             }).execute()
         except Exception as e:
-            logger.error("Failed to write security log: %s", e)
+            logger.error("Failed to write cryptographic security log: %s", e)
 
     @staticmethod
     def _denied(nid_number, face_result=None, fingerprint_result=None, reason=None):

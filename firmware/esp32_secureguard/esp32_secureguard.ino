@@ -4,13 +4,15 @@
 #include <WiFiClientSecure.h>
 #include <esp_camera.h>
 #include <Adafruit_Fingerprint.h>
+#include <mbedtls/md.h>
 
 #if __has_include("credentials.h")
 #include "credentials.h"
 #else
-const char* WIFI_SSID     = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
-const char* BACKEND_URL   = "http://YOUR_BACKEND_IP:8000";
+const char* WIFI_SSID           = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD       = "YOUR_WIFI_PASSWORD";
+const char* BACKEND_URL         = "http://YOUR_BACKEND_IP:8000";
+const char* ESP32_DEVICE_SECRET = "8d4b7bd8c1ea93b8928c4c9e9786848dadb18aa54ba74eae346af847ea62ad4c";
 #endif
 
 #define CAM_XCLK   15
@@ -652,6 +654,32 @@ static int jsonIntField(const String &body, const char *key, int fallback) {
   return (end > start) ? body.substring(start, end).toInt() : fallback;
 }
 
+static String computeHmacSha256(const uint8_t *payload, size_t payloadLen, uint32_t timestamp) {
+  char tsStr[16];
+  snprintf(tsStr, sizeof(tsStr), "%lu", static_cast<unsigned long>(timestamp));
+  size_t tsLen = strlen(tsStr);
+
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char *)ESP32_DEVICE_SECRET, strlen(ESP32_DEVICE_SECRET));
+  if (payload && payloadLen > 0) {
+    mbedtls_md_hmac_update(&ctx, (const unsigned char *)payload, payloadLen);
+  }
+  mbedtls_md_hmac_update(&ctx, (const unsigned char *)tsStr, tsLen);
+
+  unsigned char hmacOutput[32];
+  mbedtls_md_hmac_finish(&ctx, hmacOutput);
+  mbedtls_md_free(&ctx);
+
+  char hexBuf[65];
+  for (int i = 0; i < 32; i++) {
+    sprintf(hexBuf + (i * 2), "%02x", hmacOutput[i]);
+  }
+  hexBuf[64] = '\0';
+  return String(hexBuf);
+}
+
 static bool beginBackendRequest(HTTPClient &http, WiFiClientSecure &tls,
                                 WiFiClient &plain, const String &url,
                                 uint16_t timeoutMs) {
@@ -685,6 +713,12 @@ static void postBridgeResult(const String &baseUrl, const String &cmdId,
            templateId,
            confidence,
            message);
+
+  uint32_t now = millis() / 1000;
+  String sig = computeHmacSha256(reinterpret_cast<const uint8_t *>(body), strlen(body), now);
+  http.addHeader("X-Device-Timestamp", String(now));
+  http.addHeader("X-Device-Signature", sig);
+
   http.POST(reinterpret_cast<uint8_t *>(body), strlen(body));
   http.end();
 }
@@ -718,6 +752,10 @@ static void handleBridgeCapture(const String &baseUrl, const String &cmdId, int 
     String url = baseUrl + "/api/v1/device/frame?cmd_id=" + cmdId;
     if (beginBackendRequest(http, tls, plain, url, 15000)) {
       http.addHeader("Content-Type", "image/jpeg");
+      uint32_t now = millis() / 1000;
+      String sig = computeHmacSha256(fb->buf, fb->len, now);
+      http.addHeader("X-Device-Timestamp", String(now));
+      http.addHeader("X-Device-Signature", sig);
       int code = http.POST(fb->buf, fb->len);
       if (code >= 200 && code < 300) {
         sent++;
@@ -798,6 +836,11 @@ void backendBridgeTask(void *param) {
              static_cast<unsigned long>(esp_get_free_heap_size()),
              static_cast<unsigned long>(ESP.getFreePsram()),
              WiFi.localIP().toString().c_str());
+
+    uint32_t now = millis() / 1000;
+    String sig = computeHmacSha256(reinterpret_cast<const uint8_t *>(hb), strlen(hb), now);
+    http.addHeader("X-Device-Timestamp", String(now));
+    http.addHeader("X-Device-Signature", sig);
 
     int code = http.POST(reinterpret_cast<uint8_t *>(hb), strlen(hb));
     String resp = (code == 200) ? http.getString() : "";

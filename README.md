@@ -13,7 +13,7 @@
 > **An end-to-end Cyber-Physical National Identity Verification and Access Control Platform coupling high-speed edge hardware (ESP32-S3, OV2640 camera DMA, Grow R307S optical fingerprint sensor) with an OpenCV LBPH facial recognition engine, Supabase PostgreSQL audit ledger, sovereign root operator governance, and standalone hardware booth kiosk isolation.**
 
 > [!NOTE]
-> **Complete Visual Demonstration Gallery:** For the complete 14-asset visual showcase—including full-resolution hardware station kiosk screens, dual-biometric enrollment studio, forensic security audit inspector, live ESP32-S3 FreeRTOS telemetry diagnostics, and physical silicon breadboard photographs—see the [Complete Visual Demonstration Gallery (Section 10)](#10-complete-visual-demonstration-gallery-all-14-assets).
+> **Complete Visual Demonstration Gallery:** For the complete 14-asset visual showcase—including full-resolution hardware station kiosk screens, dual-biometric enrollment studio, forensic security audit inspector, live ESP32-S3 FreeRTOS telemetry diagnostics, and physical silicon breadboard photographs—see the [Complete Visual Demonstration Gallery (Section 11)](#11-complete-visual-demonstration-gallery-all-14-assets).
 
 ---
 
@@ -30,12 +30,17 @@
 4. [Computer Vision & Biometric Algorithms](#4-computer-vision--biometric-algorithms)
 5. [Embedded Hardware Layer (ESP32-S3 Cyber-Physical Edge)](#5-embedded-hardware-layer-esp32-s3-cyber-physical-edge)
 6. [Hardware Station Kiosk Mode & Booth Isolation](#6-hardware-station-kiosk-mode--booth-isolation)
-7. [Installation & Local Setup Guide](#7-installation--local-setup-guide)
-8. [Automated Verification & Operational Telemetry](#8-automated-verification--operational-telemetry)
-9. [Project & Repository Structure](#9-project--repository-structure)
-10. [Complete Visual Demonstration Gallery (All 14 Assets)](#10-complete-visual-demonstration-gallery-all-14-assets)
-11. [Author & Contact Information](#11-author--contact-information)
-12. [License](#license)
+7. [Cryptographic Security Architecture & Data Protection](#7-cryptographic-security-architecture--data-protection)
+   - [Field-Level AES-256-GCM Encryption](#71-field-level-aes-256-gcm-encryption-data-at-rest)
+   - [Deterministic Blind Indexing](#72-deterministic-blind-indexing)
+   - [Hardware HMAC-SHA256 Handshake & Replay Guard](#73-hardware-hmac-sha256-handshake--replay-guard)
+   - [Tamper-Evident Cryptographic Audit Ledger](#74-tamper-evident-cryptographic-audit-ledger)
+8. [Installation & Local Setup Guide](#8-installation--local-setup-guide)
+9. [Automated Verification & Security Test Suite](#9-automated-verification--security-test-suite)
+10. [Project & Repository Structure](#10-project--repository-structure)
+11. [Complete Visual Demonstration Gallery (All 14 Assets)](#11-complete-visual-demonstration-gallery-all-14-assets)
+12. [Author & Contact Information](#12-author--contact-information)
+13. [License](#license)
 
 ---
 
@@ -43,10 +48,12 @@
 
 - **Dual-Modal Biometric Fusion:** Implements true two-factor physical biometric verification—requiring simultaneous convergence of an optical fingerprint hash (Grow R307S) and an OpenCV Local Binary Patterns Histograms (LBPH) facial recognition confidence threshold ($\le 85.0\text{ Euclidean}$).
 - **FreeRTOS Dual-Core Asymmetric Task Separation:** ESP32-S3 firmware delegates high-speed DVP DMA camera streaming and HTTP API synchronization to **Core 0** while dedicating **Core 1** to non-blocking UART fingerprint sensor handshakes, GPIO indicator drivers, and a hardware Watchdog Timer (WDT).
+- **Field-Level AES-256-GCM Encryption & Blind Indexing:** Encrypts sensitive citizen personal data (addresses, phone numbers, contact profiles) with authenticated Galois/Counter Mode cryptography. Enables rapid $O(1)$ database query capabilities via deterministic HMAC-SHA256 blind indexing without leaking plaintext identifiers.
+- **Hardware-to-Cloud HMAC-SHA256 Anti-Spoofing & Replay Guard:** Enforces cryptographic hardware integrity checks via ESP32 `mbedtls` SHA256 HMAC digital signatures and a strict drift freshness window on every frame, sensor ping, and biometric match result.
+- **Tamper-Evident Hash-Chained Audit Ledger:** Links consecutive forensic security logs into an immutable cryptographic hash chain ($H_i = \text{SHA256}(H_{i-1} \parallel \text{Canonical}(L_i))$) with HMAC-SHA256 digital seals, exposing unauthorized database tampering mathematically.
 - **Standalone Hardware Station Kiosk Mode:** Operates as a public-facing citizen verification booth out of the box. Automatically locks down the user interface to **Identity Verification** and **Biometric Enrollment**, preventing unauthorized access to administrative directories or telemetry consoles.
 - **Sovereign Master Root Access Governance:** Centralized database-backed authorization matrix under Master Root Administrator (`masud.nil74@gmail.com`). Newly registered operators must verify their official Gmail address and await explicit cryptographic root clearance before console access is unlocked.
 - **On-Demand Biometric Enrollment Studio:** Step-by-step multi-modal citizen onboarding featuring 5-frame facial training sample extraction, automatic LBPH model retraining, and R307S optical flash template allocation.
-- **Immutable Cryptographic Audit Trail:** Every verification attempt—whether granted, denied, or flagged for biometric mismatch—is recorded in Supabase PostgreSQL with ISO-8601 timestamps, citizen NID references, Euclidean distance metrics, fingerprint match scores, and IP origin.
 - **Real-Time Security Alarms & Incident Management:** Dynamic forensic incident scanner monitoring failed attempts, threshold violations, and hardware sensor telemetry with CSV audit exports and 1-click investigator dossier inspection.
 - **Cloudflare Ingress Bridge:** Secure encrypted reverse-proxy tunneling routing edge ESP32 hardware telemetry over cellular hotspots without opening vulnerable inbound firewall ports.
 
@@ -226,7 +233,64 @@ To guarantee physical station security when deployed in public civic centers or 
 
 ---
 
-## 7. Installation & Local Setup Guide
+## 7. Cryptographic Security Architecture & Data Protection
+
+NID SecureGuard enforces an enterprise defense-in-depth cryptographic model protecting citizen PII, embedded edge hardware, and the central forensic audit ledger:
+
+```
++---------------------------------------------------------------------------------------------------+
+|                                 CRYPTOGRAPHIC SECURITY ARCHITECTURE                               |
+|                                                                                                   |
+|  [ ESP32 Edge Device ]                                                                            |
+|        |                                                                                          |
+|        |-- SHA256 HMAC Signature: X-Device-Signature = HMAC-SHA256(Payload || Timestamp, Secret)  |
+|        |-- Replay Protection: |T_server - T_device| <= 120s                                        |
+|        v                                                                                          |
+|  [ FastAPI Security Gateway ]                                                                     |
+|        |                                                                                          |
+|        |-- Sovereign Master Root RBAC: Bearer JWT validation (masud.nil74@gmail.com)              |
+|        |-- Field-Level Encryption: Ciphertext = AES-256-GCM(Plaintext, IV_96bit, Key_256bit)     |
+|        |-- Deterministic Blind Index: NID_hash = HMAC-SHA256(NID, Pepper_Key)                     |
+|        |-- Cryptographic Audit Seal: Sig = HMAC-SHA256(Canonical(Log), Audit_Secret)             |
+|        |-- Hash Chain: ChainHash_i = SHA256(ChainHash_{i-1} || Canonical(Log_i))                  |
+|        v                                                                                          |
+|  [ Supabase PostgreSQL Storage ]                                                                  |
+|        |-- Encrypted PII: enc:v1:<base64(Nonce || Ciphertext || AuthTag)>                         |
+|        |-- Tamper-Evident Security Log Ledger with verify-chain probe                             |
++---------------------------------------------------------------------------------------------------+
+```
+
+### 7.1 Field-Level AES-256-GCM Encryption (Data at Rest)
+Citizen Personally Identifiable Information (PII) is encrypted at the application boundary prior to PostgreSQL database persistence:
+$$\text{Ciphertext}, \text{Tag} = \text{AES-256-GCM}_{\text{Encrypt}}(K_{\text{enc}}, \text{IV}_{96\text{bit}}, \text{Plaintext})$$
+- **Nonce / IV Hygiene:** Every field encryption generates a fresh, non-repeating 96-bit cryptographically secure random nonce (`os.urandom(12)`).
+- **Format Envelope:** Serialized as `enc:v1:<base64(Nonce + Ciphertext + Tag)>`.
+- **Integrity Tag:** Any byte tampering within the database triggers an instantaneous `DecryptionError` upon retrieval.
+
+### 7.2 Deterministic Blind Indexing
+To allow $O(1)$ indexed searching on encrypted citizen identifiers without storing plaintext National ID numbers:
+$$\text{NID}_{\text{Index}} = \text{HMAC-SHA256}(\text{NID}_{\text{Normalized}}, K_{\text{pepper}})$$
+This produces a deterministic 256-bit hexadecimal digest stored alongside the record, allowing exact queries (`WHERE nid_hash = ?`) while keeping the database dump immune to rainbow-table or dictionary attacks.
+
+### 7.3 Hardware HMAC-SHA256 Handshake & Replay Guard
+To prevent rogue network actors from injecting forged biometric outcomes (`{"cmd_id": "...", "success": true}`):
+- The ESP32-S3 firmware utilizes the hardware-accelerated `mbedtls` engine to generate an HMAC-SHA256 digital signature:
+  $$\text{Sig} = \text{HMAC-SHA256}(\text{BodyBytes} \parallel \text{Timestamp}_{\text{epoch}}, K_{\text{device}})$$
+- **Replay Window:** The FastAPI gateway enforces $|t_{\text{current}} - t_{\text{device}}| \le 120\text{ seconds}$. Stale packets or captured requests are dropped immediately.
+
+### 7.4 Tamper-Evident Cryptographic Audit Ledger
+Every verification event is signed and linked into a Merkle-style hash chain:
+1. **Canonical JSON Serialization:** Key sorting and whitespace elimination:
+   $$\text{Canonical}(L_i) = \text{sort\_keys}(\text{LogPayload}_i)$$
+2. **Cryptographic Signature:**
+   $$\text{Sig}_i = \text{HMAC-SHA256}(\text{Canonical}(L_i), K_{\text{audit}})$$
+3. **Recursive Chain Linkage:**
+   $$H_i = \text{SHA256}(H_{i-1} \parallel \text{Canonical}(L_i)), \quad H_0 = \text{"GENESIS\_NODE"}$$
+4. **Integrity Probe:** The `/api/v1/logs/verify-chain` endpoint traverses the ledger from genesis to head, mathematically validating that zero historical entries have been modified or excised.
+
+---
+
+## 8. Installation & Local Setup Guide
 
 ### Prerequisites
 - **Python 3.11+**
@@ -260,6 +324,13 @@ ESP32_CAMERA_URL=http://192.168.1.100:81/stream
 ESP32_BASE_URL=http://192.168.1.100
 FACE_CONFIDENCE_THRESHOLD=85.0
 FACE_SAMPLES_COUNT=20
+
+# Cryptographic Keys (AES-256-GCM, HMAC-SHA256 & Hardware Handshake)
+DATA_ENCRYPTION_KEY=your-32-byte-hex-encryption-key
+BLIND_INDEX_PEPPER=your-32-byte-hex-pepper-key
+ESP32_DEVICE_SECRET=your-32-byte-hex-hardware-secret
+AUDIT_LOG_SECRET=your-32-byte-hex-audit-secret
+KIOSK_API_KEY=your-kiosk-station-api-key
 ```
 
 ### Step 3: Database Migration
@@ -292,20 +363,40 @@ npm install
 
 ---
 
-## 8. Automated Verification & Operational Telemetry
+## 9. Automated Verification & Security Test Suite
 
-The platform is backed by automated endpoint verification and health probes:
+The platform is backed by automated endpoint verification and a 12-test cryptographic test suite:
+
+```bash
+# Execute Automated Cryptographic & RBAC Test Suite
+pytest backend/tests/test_security_audit.py -v
+```
+
+**Test Suite Execution Results:**
+```
+backend/tests/test_security_audit.py::test_aes_gcm_encryption_roundtrip PASSED            [  8%]
+backend/tests/test_security_audit.py::test_aes_gcm_tamper_detection PASSED               [ 16%]
+backend/tests/test_security_audit.py::test_aes_gcm_legacy_backward_compatibility PASSED  [ 25%]
+backend/tests/test_security_audit.py::test_blind_index_properties PASSED                  [ 33%]
+backend/tests/test_security_audit.py::test_hardware_hmac_valid_verification PASSED       [ 41%]
+backend/tests/test_security_audit.py::test_hardware_hmac_spoofing_detection PASSED       [ 50%]
+backend/tests/test_security_audit.py::test_hardware_hmac_replay_attack_prevention PASSED  [ 58%]
+backend/tests/test_security_audit.py::test_audit_log_hash_chain PASSED                    [ 66%]
+backend/tests/test_security_audit.py::test_require_master_admin_success PASSED           [ 75%]
+backend/tests/test_security_audit.py::test_require_master_admin_forbidden PASSED         [ 83%]
+backend/tests/test_security_audit.py::test_require_unapproved_operator_forbidden PASSED   [ 91%]
+backend/tests/test_security_audit.py::test_user_service_transparent_encryption PASSED     [100%]
+=================================== 12 passed in 0.30s ===================================
+```
 
 ```bash
 # Verify Backend Health Check
 curl -s http://127.0.0.1:8000/health
 # Response: {"status":"healthy","device_online":true,"camera":true,"fingerprint_sensor":true}
 
-# Query Pending Operator Queue
-curl -s http://127.0.0.1:8000/api/v1/operators/pending
-
-# Query Approved Personnel
-curl -s http://127.0.0.1:8000/api/v1/operators/approved
+# Verify Cryptographic Audit Chain Integrity
+curl -s http://127.0.0.1:8000/api/v1/logs/verify-chain
+# Response: {"valid":true,"message":"Cryptographic integrity verified","status":"intact"}
 ```
 
 **Verification Results:**
@@ -314,15 +405,17 @@ curl -s http://127.0.0.1:8000/api/v1/operators/approved
 
 ---
 
-## 9. Project & Repository Structure
+## 10. Project & Repository Structure
 
 ```
 NID-SecureGuard/
 ├── backend/                        # FastAPI Central Security Gateway
 │   ├── main.py                     # Application entry point, CORS & router registration
 │   ├── config.py                   # Pydantic environment configuration
-│   ├── requirements.txt            # Python dependencies (OpenCV, FastAPI, Supabase, Uvicorn)
-│   ├── core/                       # Core utilities
+│   ├── requirements.txt            # Python dependencies (OpenCV, FastAPI, Supabase, Uvicorn, Cryptography)
+│   ├── core/                       # Core security & cryptography
+│   │   ├── crypto.py               # AES-256-GCM, Blind Index, Hardware HMAC & Audit Chainer
+│   │   ├── security.py             # Sovereign Master RBAC & Hardware Signature Guards
 │   │   ├── supabase_client.py      # Supabase client singleton (Service Role)
 │   │   └── exceptions.py           # Custom exception definitions & error envelopes
 │   ├── models/schemas.py           # Pydantic data contract models
@@ -333,14 +426,16 @@ NID-SecureGuard/
 │   │   ├── fingerprint.py          # R307S optical fingerprint enrollment bridge
 │   │   ├── operators.py            # Master Admin operator authorization endpoints
 │   │   ├── device.py               # Hardware telemetry & live camera capture
-│   │   ├── logs.py                 # Immutable security audit trail
+│   │   ├── logs.py                 # Immutable security audit trail & chain verifier
 │   │   └── health.py               # ESP32 and gateway health probes
-│   └── services/                   # Business logic layers
-│       ├── auth_service.py         # Dual-biometric clearance evaluator
-│       ├── face_service.py         # OpenCV Haar Cascade & LBPH recognizer
-│       ├── fingerprint_service.py  # R307S UART protocol handler
-│       ├── user_service.py         # Citizen database CRUD operations
-│       └── device_bridge.py        # ESP32 camera & sensor socket manager
+│   ├── services/                   # Business logic layers
+│   │   ├── auth_service.py         # Dual-biometric clearance evaluator
+│   │   ├── face_service.py         # OpenCV Haar Cascade & LBPH recognizer
+│   │   ├── fingerprint_service.py  # R307S UART protocol handler
+│   │   ├── user_service.py         # Citizen database CRUD operations & PII cipher
+│   │   └── device_bridge.py        # ESP32 camera & sensor socket manager
+│   └── tests/                      # Automated Test Suite
+│       └── test_security_audit.py  # 12-test suite for crypto, replay guards & RBAC
 ├── dashboard/                      # React 19 + TypeScript + Vite Frontend
 │   ├── src/
 │   │   ├── App.tsx                 # Root application controller & security guards
@@ -371,7 +466,7 @@ NID-SecureGuard/
 │   └── storage.sql                 # Supabase Storage bucket security rules
 ├── firmware/                       # Embedded Firmware Source
 │   └── esp32_secureguard/
-│       ├── esp32_secureguard.ino   # FreeRTOS dual-core tasks & camera DMA
+│       ├── esp32_secureguard.ino   # FreeRTOS dual-core tasks, mbedtls HMAC & camera DMA
 │       └── README.md               # Hardware wiring & flashing guide
 ├── Images/                         # 14 Complete Visual Showcase Assets
 ├── .env.example                    # Environment variable template
@@ -381,9 +476,9 @@ NID-SecureGuard/
 
 ---
 
-## 10. Complete Visual Demonstration Gallery (All 14 Assets)
+## 11. Complete Visual Demonstration Gallery (All 14 Assets)
 
-### 10.1 Hardware Station Kiosk & Citizen Verification
+### 11.1 Hardware Station Kiosk & Citizen Verification
 | Identity Verification Kiosk (Standby & Prompt) | Biometric Clearance Granted (Decrypted Record) |
 | :---: | :---: |
 | ![Identity Verification Kiosk Standby](Images/kiosk_verification.png) | ![Biometric Clearance Granted](Images/kiosk_verification_granted.png) |
@@ -394,37 +489,37 @@ NID-SecureGuard/
 | ![Biometric Enrollment Studio](Images/kiosk_enrollment.png) |
 | *3-step multi-modal citizen onboarding: biographical data, 5-frame LBPH facial capture, and optical fingerprint registration* |
 
-### 10.2 Central Command & Cloud Database Ledger
+### 11.2 Central Command & Cloud Database Ledger
 | System Command Dashboard | Cloud Database Ledger Console |
 | :---: | :---: |
 | ![System Dashboard](Images/dashboard_overview.png) | ![Cloud Database Ledger Console](Images/database_console.png) |
 | *Real-time biometric analytics, verification traffic charts, live ESP32 camera viewport, and FreeRTOS telemetry metrics* | *Supabase PostgreSQL `security_logs` ledger detailing biometric confidence scores ($\tau$), NID bindings, and verification verdicts* |
 
-### 10.3 Citizen Directory & Security Audit Intelligence
+### 11.3 Citizen Directory & Security Audit Intelligence
 | Verified Citizen Directory | Immutable Security Audit Ledger |
 | :---: | :---: |
 | ![Citizen Directory](Images/citizen_directory.png) | ![Security Audit Logs](Images/audit_logs.png) |
 | *National citizen identity registry with biographical profile cards, enrolled biometric badges, and verification history* | *Cryptographic audit trail with 1-click forensic inspector, NID copy utilities, decision filters, and CSV export* |
 
-### 10.4 Security Alarms, Incidents & System Parameters
+### 11.4 Security Alarms, Incidents & System Parameters
 | Real-Time Alerts & Incidents Center | System Parameters & Biometric Thresholds |
 | :---: | :---: |
 | ![Alerts & Incidents](Images/alerts_incidents.png) | ![System Settings](Images/system_settings.png) |
 | *Live alarm monitor tracking unauthorized access attempts, optical sensor timeouts, and persistent incident resolution* | *Biometric confidence thresholds ($\tau$), hardware timeouts, GPIO LED toggles, and Cloudflare tunnel parameters* |
 
-### 10.5 Hardware Diagnostics & FreeRTOS Telemetry
+### 11.5 Hardware Diagnostics & FreeRTOS Telemetry
 | Hardware & Telemetry Diagnostic Console |
 | :---: |
 | ![Hardware Telemetry](Images/hardware_telemetry.png) |
 | *ESP32-S3 FreeRTOS dual-core task monitor, R307S UART ping meter, live camera latency meter, and GPIO bus matrix* |
 
-### 10.6 Access Control Portals & Official Email Handshake
+### 11.6 Access Control Portals & Official Email Handshake
 | Operator Sign-In Gateway | Operator Provisioning Portal | Official Email Verification Gate |
 | :---: | :---: | :---: |
 | ![Operator Sign In](Images/auth_login.png) | ![Operator Registration](Images/auth_register.png) | ![Email Verification](Images/email_verification.png) |
 | *Encrypted login portal with anti-autofill protection* | *Officer provisioning with badge ID & station assignment* | *Gmail confirmation handshake gate preventing unauthorized bypass* |
 
-### 10.7 Physical Silicon Prototype & Cyber-Physical Testbed
+### 11.7 Physical Silicon Prototype & Cyber-Physical Testbed
 | ESP32-S3 Cyber-Physical Testbed Bench Photograph |
 | :---: |
 | ![Physical Hardware Prototype](Images/hardware_prototype.jpeg) |
@@ -432,7 +527,7 @@ NID-SecureGuard/
 
 ---
 
-## 11. Author & Contact Information
+## 12. Author & Contact Information
 
 **Shahriar Alom Masud**  
 B.Sc. Engg. in IoT & Robotics Engineering  
@@ -443,6 +538,6 @@ University of Frontier Technology, Bangladesh
 
 ---
 
-## License
+## 13. License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
