@@ -98,3 +98,53 @@ export async function checkFaceDetection(): Promise<{ face_detected: boolean; co
   }
 }
 
+export interface OperatorRecord {
+  id: string
+  email: string
+  fullName: string
+  badgeId: string
+  stationId: string
+  role: 'super_admin' | 'verification_officer' | 'registrar' | 'auditor'
+  isMaster?: boolean
+  registeredAt: string
+}
+
+export async function fetchPendingOperators(): Promise<OperatorRecord[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/operators/pending`)
+    if (res.ok) return await res.json()
+  } catch (err) {
+    console.error('Failed to fetch pending operators:', err)
+  }
+  return []
+}
+
+export async function fetchApprovedOperators(): Promise<OperatorRecord[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/operators/approved`)
+    if (res.ok) return await res.json()
+  } catch (err) {
+    console.error('Failed to fetch approved operators:', err)
+  }
+  return []
+}
+
+export async function apiApproveOperator(userId: string): Promise<boolean> {
+  const res = await fetch(`${API_BASE}/api/v1/operators/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId }),
+  })
+  return res.ok
+}
+
+export async function apiRejectOperator(userId: string): Promise<boolean> {
+  const res = await fetch(`${API_BASE}/api/v1/operators/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId }),
+  })
+  return res.ok
+}
+
+

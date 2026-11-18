@@ -17,7 +17,7 @@ from services.face_service import FaceService
 from services.fingerprint_service import FingerprintService
 from services.auth_service import AuthService
 from services.user_service import UserService
-from routes import health, users, face, fingerprint, auth, logs, device
+from routes import health, users, face, fingerprint, auth, logs, device, operators
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -64,3 +64,4 @@ app.include_router(face.router)
 app.include_router(fingerprint.router)
 app.include_router(auth.router)
 app.include_router(logs.router)
+app.include_router(operators.router)

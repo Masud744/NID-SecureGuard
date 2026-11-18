@@ -56,9 +56,7 @@ const navSections: NavSection[] = [
     category: 'Operations',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'kiosk', label: 'Identity Verification', icon: ScanFace },
       { id: 'registry', label: 'Citizen Directory', icon: Users },
-      { id: 'registration', label: 'Biometric Enrollment', icon: UserPlus },
     ],
   },
   {
@@ -191,26 +189,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* User Profile / Kiosk Exit Card (Bottom) */}
-        <div className="p-3 border-t border-brand-800/60 bg-brand-950/40">
+        <div className="p-3 border-t border-brand-800/60 bg-brand-950/60">
           {isKioskMode ? (
-            <div className="p-2 space-y-2">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <div className="rounded-xl bg-brand-900/80 border border-brand-700/60 p-3 space-y-2.5">
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-white leading-tight">
                     Hardware Station Kiosk
                   </p>
-                  <p className="text-[10px] text-emerald-300 font-mono">
+                  <p className="text-[10px] text-emerald-300/80 font-mono">
                     Restricted Terminal
                   </p>
                 </div>
               </div>
               {onExitKiosk && (
                 <button
+                  type="button"
                   onClick={onExitKiosk}
-                  className="w-full py-1.5 px-2.5 rounded-lg bg-brand-800 hover:bg-brand-700 text-emerald-300 hover:text-white text-[11px] font-semibold border border-brand-600/40 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                 >
-                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                  <Lock className="w-3.5 h-3.5" />
                   <span>Exit Kiosk & Admin Login</span>
                 </button>
               )}

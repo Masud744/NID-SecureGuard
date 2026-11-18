@@ -10,6 +10,7 @@ import { AlertsView } from './components/AlertsView'
 import { DeviceView } from './components/DeviceView'
 import { SettingsView } from './components/SettingsView'
 import { AuthView } from './components/AuthView'
+import { PendingApprovalView } from './components/PendingApprovalView'
 import { fetchHealth } from './lib/api'
 import { supabase } from './lib/supabase'
 import {
@@ -118,6 +119,22 @@ export const App: React.FC = () => {
         onLaunchKiosk={() => {
           setIsKioskMode(true)
           setActiveTab('kiosk')
+        }}
+      />
+    )
+  }
+
+  // Authenticated BUT NOT APPROVED -> Show Pending Approval Lock Screen
+  if (operator && !operator.isApproved) {
+    return (
+      <PendingApprovalView
+        operator={operator}
+        onSignOut={handleSignOut}
+        onRefresh={async () => {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            setOperator(extractProfileFromUser(user))
+          }
         }}
       />
     )

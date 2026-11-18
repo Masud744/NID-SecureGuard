@@ -40,9 +40,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  // Sign In Form State - Defaulting to Master Admin
-  const [signInEmail, setSignInEmail] = useState(MASTER_ADMIN_EMAIL)
-  const [signInPassword, setSignInPassword] = useState('Admin@SecureGuard2026')
+  // Sign In Form State - Defaulting to blank
+  const [signInEmail, setSignInEmail] = useState('')
+  const [signInPassword, setSignInPassword] = useState('')
 
   // Sign Up Form State with Confirm Password
   const [signUpData, setSignUpData] = useState({
@@ -54,12 +54,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
     stationId: 'Terminal Alpha - Central Station',
     role: 'verification_officer' as 'super_admin' | 'verification_officer' | 'registrar' | 'auditor',
   })
-
-  const fillMasterAdminCredentials = () => {
-    setSignInEmail(MASTER_ADMIN_EMAIL)
-    setSignInPassword('Admin@SecureGuard2026')
-    setErrorMessage(null)
-  }
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -114,7 +108,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
 
       if (result.requiresEmailConfirmation) {
         setSuccessMessage(
-          `Registration submitted successfully! A confirmation link has been sent to your Gmail (${signUpData.email}). Please verify your email. Access will be unlocked once authorized by Master Administrator (${MASTER_ADMIN_NAME} - ${MASTER_ADMIN_EMAIL}).`
+          `Registration submitted successfully! A confirmation link has been sent to your email (${signUpData.email}). Please verify your email. Access will be unlocked once authorized by Master Administrator.`
         )
       } else {
         setSuccessMessage('Account provisioned. Please sign in to verify credentials.')
@@ -194,13 +188,14 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
               </div>
             </div>
 
-            {/* Master Authority Badge */}
-            <div className="p-3.5 rounded-xl bg-brand-900/80 border border-brand-700/60 text-xs">
+            {/* Security Assurance Notice */}
+            <div className="p-3.5 rounded-xl bg-brand-900/60 border border-brand-700/40 text-xs">
               <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider block">
-                Master Root Authority
+                Security Governance
               </span>
-              <p className="font-bold text-white text-xs mt-0.5">{MASTER_ADMIN_NAME}</p>
-              <p className="font-mono text-[11px] text-brand-300">{MASTER_ADMIN_EMAIL}</p>
+              <p className="text-brand-200/90 text-xs mt-1 leading-relaxed">
+                Dual-layer biometric authentication gateway with encrypted cryptographic logging and role-governed terminal access.
+              </p>
             </div>
           </div>
 
@@ -234,6 +229,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                     setTab('signin')
                     setErrorMessage(null)
                     setSuccessMessage(null)
+                    setSignInPassword('')
+                    setSignUpData((prev) => ({ ...prev, password: '', confirmPassword: '' }))
                   }}
                   className={`px-4 py-2 rounded-lg font-bold transition-all cursor-pointer ${
                     tab === 'signin'
@@ -249,6 +246,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                     setTab('signup')
                     setErrorMessage(null)
                     setSuccessMessage(null)
+                    setSignInPassword('')
+                    setSignUpData((prev) => ({ ...prev, password: '', confirmPassword: '' }))
                   }}
                   className={`px-4 py-2 rounded-lg font-bold transition-all cursor-pointer ${
                     tab === 'signup'
@@ -259,16 +258,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                   Register Operator
                 </button>
               </div>
-
-              {tab === 'signin' && (
-                <button
-                  type="button"
-                  onClick={fillMasterAdminCredentials}
-                  className="text-[11px] font-semibold text-brand-700 hover:text-brand-900 bg-brand-50 hover:bg-brand-100 px-2.5 py-1 rounded-lg border border-brand-200 transition-colors cursor-pointer"
-                >
-                  Master Admin Credentials
-                </button>
-              )}
             </div>
 
             {/* Feedback Banners */}
@@ -298,7 +287,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                     <input
                       type="email"
                       required
-                      placeholder="masud.nil74@gmail.com"
+                      placeholder="operator@secureguard.gov.bd"
                       value={signInEmail}
                       onChange={(e) => setSignInEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-brand-600 focus:bg-white focus:ring-1 focus:ring-brand-600 font-mono transition-all"
@@ -411,6 +400,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
+                        autoComplete="new-password"
                         placeholder="••••••••••••"
                         value={signUpData.password}
                         onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
@@ -435,6 +425,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         required
+                        autoComplete="new-password"
                         placeholder="••••••••••••"
                         value={signUpData.confirmPassword}
                         onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
@@ -514,7 +505,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
           {/* Bottom Security Notice */}
           <div className="pt-6 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
             <span>Platform v2.4 Enterprise</span>
-            <span>Master Authority: {MASTER_ADMIN_EMAIL}</span>
+            <span>Security Gateway Active</span>
           </div>
         </div>
       </div>

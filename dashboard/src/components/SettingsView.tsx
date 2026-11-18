@@ -35,13 +35,15 @@ import {
   MASTER_ADMIN_EMAIL,
   MASTER_ADMIN_NAME,
   isMasterAdmin,
-  getPendingOperatorRequests,
-  approveOperatorRequest,
-  rejectOperatorRequest,
-  getApprovedOperators,
-  type PendingOperatorRequest,
   type OperatorProfile,
 } from '../lib/auth'
+import {
+  fetchPendingOperators,
+  fetchApprovedOperators,
+  apiApproveOperator,
+  apiRejectOperator,
+  type OperatorRecord,
+} from '../lib/api'
 
 export interface SystemSettingsConfig {
   // Biometrics
@@ -106,29 +108,52 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ isRoles = false, ope
   const [settings, setSettings] = useState<SystemSettingsConfig>(loadSavedSettings)
   const [saved, setSaved] = useState(false)
   const [activePreset, setActivePreset] = useState<'strict' | 'standard' | 'fast' | 'custom'>('standard')
-  const [pendingRequests, setPendingRequests] = useState<PendingOperatorRequest[]>(() =>
-    getPendingOperatorRequests()
-  )
-  const [approvedOperators, setApprovedOperators] = useState<Set<string>>(() =>
-    getApprovedOperators()
-  )
+  const [pendingRequests, setPendingRequests] = useState<OperatorRecord[]>([])
+  const [approvedList, setApprovedList] = useState<OperatorRecord[]>([])
+  const [loadingOperators, setLoadingOperators] = useState(false)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
 
   const isMaster = isMasterAdmin(operator?.email)
 
-  const handleApprove = (req: PendingOperatorRequest) => {
-    approveOperatorRequest(req.email)
-    setPendingRequests(getPendingOperatorRequests())
-    setApprovedOperators(new Set(getApprovedOperators()))
-    setActionNotice(`Operator ${req.fullName} (${req.email}) has been authorized. They may now sign in.`)
+  const reloadOperators = async () => {
+    setLoadingOperators(true)
+    try {
+      const [pending, approved] = await Promise.all([
+        fetchPendingOperators(),
+        fetchApprovedOperators(),
+      ])
+      setPendingRequests(pending)
+      setApprovedList(approved)
+    } finally {
+      setLoadingOperators(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'rbac') {
+      reloadOperators()
+    }
+  }, [activeTab])
+
+  const handleApprove = async (req: OperatorRecord) => {
+    const success = await apiApproveOperator(req.id)
+    if (success) {
+      setActionNotice(`Operator ${req.fullName} (${req.email}) has been authorized in the database.`)
+      reloadOperators()
+    } else {
+      setActionNotice(`Failed to authorize operator ${req.fullName}.`)
+    }
     setTimeout(() => setActionNotice(null), 4000)
   }
 
-  const handleReject = (req: PendingOperatorRequest) => {
-    rejectOperatorRequest(req.email)
-    setPendingRequests(getPendingOperatorRequests())
-    setApprovedOperators(new Set(getApprovedOperators()))
-    setActionNotice(`Operator registration request for ${req.email} was rejected.`)
+  const handleReject = async (req: OperatorRecord) => {
+    const success = await apiRejectOperator(req.id)
+    if (success) {
+      setActionNotice(`Operator registration request for ${req.email} was rejected and removed.`)
+      reloadOperators()
+    } else {
+      setActionNotice(`Failed to reject operator ${req.email}.`)
+    }
     setTimeout(() => setActionNotice(null), 4000)
   }
 
@@ -796,9 +821,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ isRoles = false, ope
                   {pendingRequests.length} Pending Approval
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
-                Only Master Admin can approve newly verified Gmail accounts
-              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={reloadOperators}
+                  disabled={loadingOperators}
+                  className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${loadingOperators ? 'animate-spin' : ''}`} />
+                  <span>Refresh Queue</span>
+                </button>
+              </div>
             </div>
 
             {pendingRequests.length === 0 ? (
@@ -929,7 +962,55 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ isRoles = false, ope
                     </td>
                   </tr>
 
-                  {/* Standard Verified Field Officer */}
+                  {/* Dynamically Loaded Approved Operators */}
+                  {approvedList
+                    .filter(
+                      (op) =>
+                        !op.isMaster &&
+                        op.email.toLowerCase() !== MASTER_ADMIN_EMAIL.toLowerCase()
+                    )
+                    .map((op) => (
+                      <tr key={op.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center">
+                              {op.fullName ? op.fullName.slice(0, 2).toUpperCase() : 'OP'}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-800">{op.fullName}</div>
+                              <div className="text-[11px] text-slate-400 font-mono">{op.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            {op.role === 'super_admin'
+                              ? 'Administrator'
+                              : op.role === 'registrar'
+                              ? 'Biometric Registrar'
+                              : op.role === 'auditor'
+                              ? 'Compliance Auditor'
+                              : 'Terminal Operator'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-slate-600 text-[11px] max-w-sm">
+                          Station: {op.stationId} • Badge: {op.badgeId} • Biometric Clearance Verification
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            Level 2 (Operator)
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap text-right">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Approved
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+
+                  {/* Pre-configured Baseline System Officers */}
                   <tr className="hover:bg-slate-50/60 transition-colors">
                     <td className="py-4 px-4 whitespace-nowrap">
                       <div className="flex items-center space-x-3">
