@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+venv/
+.venv/
+.env
+
+# Node
+node_modules/
+
+# Arduino / C++
+*.o
+*.elf
+build/
+
+# Trained models and face data (regenerated per deployment)
+backend/data/face_model.yml
+backend/data/face_samples/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/settings.json

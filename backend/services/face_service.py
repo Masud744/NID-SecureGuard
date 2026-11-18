@@ -1,0 +1,146 @@
+import logging
+import time
+from pathlib import Path
+
+import cv2
+import httpx
+import numpy as np
+
+from core.exceptions import DeviceOfflineError
+
+logger = logging.getLogger(__name__)
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+MODEL_PATH = DATA_DIR / "face_model.yml"
+CASCADE_PATH = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+MAX_STREAM_BYTES = 2 * 1024 * 1024
+
+
+class FaceService:
+    def __init__(self):
+        self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
+        self.recognizer = cv2.face.LBPHFaceRecognizer_create()
+        if MODEL_PATH.exists():
+            self.recognizer.read(str(MODEL_PATH))
+            self._trained = True
+        else:
+            self._trained = False
+
+    def capture_from_esp32(self, stream_url: str) -> np.ndarray:
+        """Grab a single JPEG frame from an ESP32 MJPEG stream or capture endpoint."""
+        buf = bytearray()
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                with client.stream("GET", stream_url) as resp:
+                    resp.raise_for_status()
+                    for chunk in resp.iter_bytes(chunk_size=4096):
+                        buf.extend(chunk)
+                        start = buf.find(b"\xff\xd8")
+                        if start != -1:
+                            end = buf.find(b"\xff\xd9", start + 2)
+                            if end != -1:
+                                jpg = bytes(buf[start : end + 2])
+                                frame = cv2.imdecode(
+                                    np.frombuffer(jpg, dtype=np.uint8),
+                                    cv2.IMREAD_COLOR,
+                                )
+                                if frame is None:
+                                    raise ValueError(f"Could not decode frame from {stream_url}")
+                                return frame
+                        if len(buf) > MAX_STREAM_BYTES:
+                            break
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code >= 500:
+                raise DeviceOfflineError("ESP32 camera", stream_url)
+            raise ValueError(f"ESP32 camera returned HTTP {e.response.status_code}")
+        except httpx.RequestError:
+            raise DeviceOfflineError("ESP32 camera", stream_url)
+
+        raise ValueError(f"No valid JPEG frame received from {stream_url}")
+
+    def detect_face(self, frame: np.ndarray) -> np.ndarray | None:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(
+            gray, scaleFactor=1.3, minNeighbors=5, minSize=(80, 80)
+        )
+        if len(faces) == 0:
+            return None
+
+        # keep the largest face in frame
+        x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+        roi = gray[y : y + h, x : x + w]
+        return cv2.resize(roi, (200, 200))
+
+    def enroll_face(
+        self,
+        user_id: str,
+        model_label: int,
+        stream_url: str,
+        num_samples: int,
+        supabase_client,
+    ) -> int:
+        """Capture face samples, upload to Supabase Storage, and update the LBPH model.
+
+        Returns the number of samples captured.
+        """
+        samples = []
+        captured = 0
+
+        for attempt in range(num_samples * 2):
+            if captured >= num_samples:
+                break
+            try:
+                frame = self.capture_from_esp32(stream_url)
+                face_roi = self.detect_face(frame)
+                if face_roi is None:
+                    time.sleep(0.3)
+                    continue
+
+                samples.append(face_roi)
+                captured += 1
+
+                ok, encoded = cv2.imencode(".jpg", face_roi)
+                if ok:
+                    file_path = f"{user_id}/sample_{captured}.jpg"
+                    supabase_client.storage.from_("face-samples").upload(
+                        file_path,
+                        encoded.tobytes(),
+                        file_options={"content-type": "image/jpeg", "upsert": "true"},
+                    )
+                time.sleep(0.3)
+            except DeviceOfflineError:
+                raise
+            except Exception as e:
+                logger.warning("Sample attempt %d failed: %s", attempt, e)
+
+        if not samples:
+            raise ValueError("No face samples captured — check camera and positioning")
+
+        labels = np.array([model_label] * len(samples), dtype=np.int32)
+        if self._trained:
+            self.recognizer.update(samples, labels)
+        else:
+            self.recognizer.train(samples, labels)
+            self._trained = True
+
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        self.recognizer.save(str(MODEL_PATH))
+        logger.info("Model saved with %d samples for label %d", len(samples), model_label)
+        return captured
+
+    def recognize_face(
+        self, frame: np.ndarray, threshold: float
+    ) -> tuple[int, float, str]:
+        """Run LBPH prediction on a frame. Returns (label, confidence, status)."""
+        if not self._trained:
+            return -1, 0.0, "no_model"
+
+        face_roi = self.detect_face(frame)
+        if face_roi is None:
+            return -1, 0.0, "no_face_detected"
+
+        label, confidence = self.recognizer.predict(face_roi)
+        # LBPH reports distance, so lower means a closer match
+        if confidence < threshold:
+            return int(label), float(confidence), "match"
+        return int(label), float(confidence), "no_match"
