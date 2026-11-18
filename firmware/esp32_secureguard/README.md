@@ -22,9 +22,9 @@ Dual-core FreeRTOS firmware for the ESP32-S3-WROOM-1 N16R8 board running an OV26
 
 | Component        | Pin / Bus                          |
 |------------------|------------------------------------|
-| R307S Sensor     | UART1 — RX=GPIO44, TX=GPIO43, 57600 baud |
-| Green Status LED | GPIO1                              |
-| Red Status LED   | GPIO2                              |
+| R307S Sensor     | UART1 — RX=GPIO1 (Sensor TX), TX=GPIO2 (Sensor RX), VCC=5V (VIN), GND=GND, 57600 baud |
+| Green Status LED | GPIO41                             |
+| Red Status LED   | GPIO21                             |
 | Buzzer           | GPIO42                             |
 
 ## Libraries

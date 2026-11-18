@@ -24,12 +24,12 @@ const char* BACKEND_URL   = "http://YOUR_BACKEND_IP:8000";
 #define CAM_PWDN   -1
 #define CAM_RESET  -1
 
-#define FP_RX      44
-#define FP_TX      43
+#define FP_RX      1
+#define FP_TX      2
 #define FP_BAUD    57600
 
-#define LED_GREEN  1
-#define LED_RED    2
+#define LED_GREEN  41
+#define LED_RED    21
 #define BUZZER_PIN 42
 
 #define EVT_WIFI_CONNECTED  (1 << 0)
