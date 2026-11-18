@@ -25,6 +25,12 @@ class DeviceResultPayload(BaseModel):
     message: str = ""
 
 
+@router.get("/time")
+async def get_device_time():
+    """Returns current server Unix epoch timestamp for hardware clock synchronization."""
+    return {"epoch": int(time.time())}
+
+
 @router.post("/poll")
 async def poll_command(
     body: HeartbeatPayload,
