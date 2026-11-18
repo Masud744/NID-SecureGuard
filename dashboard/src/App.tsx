@@ -58,7 +58,10 @@ export const App: React.FC = () => {
             <CitizenDirectory onNavigate={setActiveTab} />
           )}
           {activeTab === 'registration' && (
-            <RegistrationStudio onRegistered={() => setActiveTab('registry')} />
+            <RegistrationStudio
+              onRegistered={() => setActiveTab('registry')}
+              onNavigate={setActiveTab}
+            />
           )}
           {activeTab === 'logs' && <AuditLogs />}
           {activeTab === 'alerts' && <AlertsView />}
