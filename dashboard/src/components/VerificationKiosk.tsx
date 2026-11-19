@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   FileText,
   Camera,
@@ -36,7 +36,7 @@ export const VerificationKiosk: React.FC<VerificationKioskProps> = ({ onNavigate
   const [statusMessage, setStatusMessage] = useState('Ready for citizen authentication.')
   const [isRefreshingFrame, setIsRefreshingFrame] = useState(false)
   const [isFaceDetected, setIsFaceDetected] = useState(true)
-  const [detectedConfidence, setDetectedConfidence] = useState('83.9%')
+  const [detectedConfidence, setDetectedConfidence] = useState<string | null>(null)
   const [verifyPhase, setVerifyPhase] = useState<'idle' | 'face' | 'fingerprint' | 'complete'>('idle')
   const [countdown, setCountdown] = useState<number | null>(null)
 
@@ -164,9 +164,18 @@ export const VerificationKiosk: React.FC<VerificationKioskProps> = ({ onNavigate
 
   const isGranted = verificationResult?.access_decision === 'granted'
   const isDenied = verificationResult && !isGranted
-  const faceScore = verificationResult?.face_result?.confidence
-    ? `${(100 - Math.min(100, verificationResult.face_result.confidence * 0.7)).toFixed(1)}%`
-    : '83.9%'
+  const faceScore = useMemo(() => {
+    if (isLoading) return 'Scanning...'
+    if (verificationResult?.face_result) {
+      if (verificationResult.face_result.status === 'no_face_detected') {
+        return 'No Face'
+      }
+      if (verificationResult.face_result.confidence) {
+        return `${(100 - Math.min(100, verificationResult.face_result.confidence * 0.7)).toFixed(1)}%`
+      }
+    }
+    return detectedConfidence || 'Standby'
+  }, [isLoading, verificationResult, detectedConfidence])
   const fpMatch = verificationResult?.fingerprint_result?.status === 'match'
   const fpSlot = verificationResult?.fingerprint_result?.template_id
 
@@ -416,9 +425,31 @@ export const VerificationKiosk: React.FC<VerificationKioskProps> = ({ onNavigate
 
             {/* Viewport Footer Bar with Quality Meter */}
             <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/80">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Face Detected
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold border ${
+                faceScore === 'No Face'
+                  ? 'bg-rose-50 text-rose-800 border-rose-200/80'
+                  : isLoading
+                  ? 'bg-amber-50 text-amber-800 border-amber-200/80'
+                  : verificationResult
+                  ? (isGranted || verificationResult.face_result?.status === 'match')
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
+                    : 'bg-rose-50 text-rose-800 border-rose-200/80'
+                  : 'bg-slate-50 text-slate-700 border-slate-200/80'
+              }`}>
+                {isLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                ) : faceScore === 'No Face' ? (
+                  <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                ) : (
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${verificationResult ? 'text-emerald-600' : 'text-slate-400'}`} />
+                )}
+                {isLoading
+                  ? 'Analyzing Live Frame...'
+                  : faceScore === 'No Face'
+                  ? 'No Face Detected'
+                  : verificationResult
+                  ? 'Face Evaluated'
+                  : 'Camera Ready'}
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-slate-500 font-medium">Confidence:</span>

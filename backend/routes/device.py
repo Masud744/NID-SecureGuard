@@ -117,4 +117,8 @@ async def detect_current_face(request: Request):
     if face_roi is None:
         return {"face_detected": False, "confidence": 0.0}
 
-    return {"face_detected": True, "confidence": 86.4}
+    # Compute actual camera focus / contrast quality using Laplacian variance
+    gray_roi = face_roi if len(face_roi.shape) == 2 else cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
+    laplacian_var = float(cv2.Laplacian(gray_roi, cv2.CV_64F).var())
+    quality_score = min(98.5, max(70.0, 68.0 + (laplacian_var / 15.0)))
+    return {"face_detected": True, "confidence": round(quality_score, 1)}
