@@ -28,3 +28,11 @@ Thumbs.db
 *~
 .idea/
 .vscode/settings.json
+
+# LaTeX Auxiliary Files
+*.aux
+*.log
+*.toc
+*.lof
+*.lot
+*.out
