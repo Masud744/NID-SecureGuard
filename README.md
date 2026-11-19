@@ -316,7 +316,7 @@ Every verification event is signed and linked into a Merkle-style hash chain:
 
 ### Step 1: Clone Repository
 ```bash
-git clone https://github.com/Masud744/NID-SecureGuard.git
+git clone https://github.com/Hasan-IRE/NID-SecureGuard.git
 cd NID-SecureGuard
 ```
 
@@ -471,7 +471,7 @@ The entire NID SecureGuard platform is orchestrated for automated unified monore
 Both frontend and backend are declared via the repository's root [render.yaml](file:///home/shahriar-alom-masud/Projects/Secure%20Gaurd/render.yaml) specification:
 
 1. Log in to [Render.com](https://render.com) and navigate to **Blueprints**.
-2. Click **New Blueprint Instance** and connect your `Masud744/NID-SecureGuard` repository.
+2. Click **New Blueprint Instance** and connect your `Hasan-IRE/NID-SecureGuard` repository.
 3. Render automatically provisions:
    - **`nid-secureguard-api`** (Python 3.12 Web Service)
    - **`nid-secureguard-dashboard`** (Static Site with SPA rewrite rules)
@@ -636,12 +636,11 @@ NID-SecureGuard/
 
 ## 13. Author & Contact Information
 
-**Shahriar Alom Masud**  
+**Mahmudul Hasan**  
 B.Sc. Engg. in IoT & Robotics Engineering  
 University of Frontier Technology, Bangladesh  
-- **Email:** [shahriar0002@std.uftb.ac.bd](mailto:shahriar0002@std.uftb.ac.bd) / [masud.nil74@gmail.com](mailto:masud.nil74@gmail.com)  
-- **LinkedIn:** [https://www.linkedin.com/in/shahriar-alom-masud](https://www.linkedin.com/in/shahriar-alom-masud)  
-- **GitHub:** [https://github.com/Masud744](https://github.com/Masud744)
+- **Email:** [hasan.ire.uftb@gmail.com](mailto:hasan.ire.uftb@gmail.com)  
+- **GitHub:** [https://github.com/Hasan-IRE](https://github.com/Hasan-IRE)
 
 ---
 
