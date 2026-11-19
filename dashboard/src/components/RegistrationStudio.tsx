@@ -318,7 +318,7 @@ export const RegistrationStudio: React.FC<RegistrationStudioProps> = ({
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Shahriar Alom Masud"
+                        placeholder="e.g. Citizen Legal Name"
                         value={formData.full_name}
                         onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:outline-none focus:border-brand-600 focus:bg-white focus:ring-1 focus:ring-brand-600 transition-all"

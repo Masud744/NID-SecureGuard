@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from config import settings
 from core.security import require_master_admin
 
 router = APIRouter(prefix="/api/v1/operators", tags=["Operators"])
@@ -28,7 +29,7 @@ async def get_pending_operators(
         for u in users:
             meta = u.user_metadata or {}
             email = (u.email or "").strip().lower()
-            is_master = meta.get("is_master", False) or email == "masud.nil74@gmail.com"
+            is_master = meta.get("is_master", False) or email == settings.MASTER_ADMIN_EMAIL.strip().lower()
             is_approved = meta.get("is_approved", False) or is_master
             if not is_approved:
                 pending.append({
@@ -59,13 +60,13 @@ async def get_approved_operators(
         for u in users:
             meta = u.user_metadata or {}
             email = (u.email or "").strip().lower()
-            is_master = meta.get("is_master", False) or email == "masud.nil74@gmail.com"
+            is_master = meta.get("is_master", False) or email == settings.MASTER_ADMIN_EMAIL.strip().lower()
             is_approved = meta.get("is_approved", False) or is_master
             if is_approved:
                 approved.append({
                     "id": u.id,
                     "email": u.email,
-                    "fullName": "Shahriar Alom Masud" if is_master else meta.get("full_name", u.email),
+                    "fullName": meta.get("full_name") or ("Head Administrator" if is_master else u.email),
                     "badgeId": "SEC-MASTER-01" if is_master else meta.get("badge_id", "N/A"),
                     "stationId": "National Command Center - HQ" if is_master else meta.get("station_id", "N/A"),
                     "role": "super_admin" if is_master else meta.get("role", "verification_officer"),
@@ -116,7 +117,7 @@ async def reject_operator(
             raise HTTPException(404, "Operator user not found")
         # Prevent Master Admin from rejecting/deleting themselves
         target_email = (user_res.user.email or "").strip().lower()
-        if target_email == "masud.nil74@gmail.com":
+        if target_email == settings.MASTER_ADMIN_EMAIL.strip().lower():
             raise HTTPException(400, "Cannot reject sovereign Master Root Administrator account")
 
         supabase.auth.admin.delete_user(body.user_id)

@@ -60,7 +60,7 @@
 - **Hardware-to-Cloud HMAC-SHA256 Anti-Spoofing & Replay Guard:** Enforces cryptographic hardware integrity checks via ESP32 `mbedtls` SHA256 HMAC digital signatures and a strict drift freshness window on every frame, sensor ping, and biometric match result.
 - **Tamper-Evident Hash-Chained Audit Ledger:** Links consecutive forensic security logs into an immutable cryptographic hash chain ($H_i = \text{SHA256}(H_{i-1} \parallel \text{Canonical}(L_i))$) with HMAC-SHA256 digital seals, exposing unauthorized database tampering mathematically.
 - **Standalone Hardware Station Kiosk Mode:** Operates as a public-facing citizen verification booth out of the box. Automatically locks down the user interface to **Identity Verification** and **Biometric Enrollment**, preventing unauthorized access to administrative directories or telemetry consoles.
-- **Sovereign Master Root Access Governance:** Centralized database-backed authorization matrix under Master Root Administrator (`masud.nil74@gmail.com`). Newly registered operators must verify their official Gmail address and await explicit cryptographic root clearance before console access is unlocked.
+- **Sovereign Master Root Access Governance:** Centralized database-backed authorization matrix under Master Root Administrator (`hasan.ire.uftb@gmail.com`). Newly registered operators must verify their official Gmail address and await explicit cryptographic root clearance before console access is unlocked.
 - **On-Demand Biometric Enrollment Studio:** Step-by-step multi-modal citizen onboarding featuring 5-frame facial training sample extraction, automatic LBPH model retraining, and R307S optical flash template allocation.
 - **Real-Time Security Alarms & Incident Management:** Dynamic forensic incident scanner monitoring failed attempts, threshold violations, and hardware sensor telemetry with CSV audit exports and 1-click investigator dossier inspection.
 - **Cloudflare Ingress Bridge:** Secure encrypted reverse-proxy tunneling routing edge ESP32 hardware telemetry over cellular hotspots without opening vulnerable inbound firewall ports.
@@ -129,7 +129,7 @@ graph TD
     Decision -->|Cryptographic Log Payload| Supabase[(Supabase Cloud Database)]
     Supabase <-->|Real-Time WebSockets| Dashboard[React 19 Security Dashboard]
     
-    MasterAdmin([Shahriar Alom Masud - Root]) -->|Approves / Rejects Personnel| AuthQueue[Operator Authorization Queue]
+    MasterAdmin([Master Admin - Root]) -->|Approves / Rejects Personnel| AuthQueue[Operator Authorization Queue]
     AuthQueue -->|Updates Metadata| Supabase
 ```
 
@@ -184,7 +184,7 @@ Upon a `DENIED` decision:
 
 ### 3.5 Sovereign Master Admin & Operator Authorization Matrix
 The platform implements an institutional security governance hierarchy:
-- **Master Root Sovereign (`masud.nil74@gmail.com`):** Holds permanent root administrative sovereignty. Holds exclusive authority to authorize, promote, or purge operator applicants.
+- **Master Root Sovereign (`hasan.ire.uftb@gmail.com`):** Holds permanent root administrative sovereignty. Holds exclusive authority to authorize, promote, or purge operator applicants.
 - **Operator Registration Gate:** Newly onboarded field officers must register with their official email, verify their inbox confirmation token, and await manual approval from the Master Administrator.
 - **Zero-Bypass Architecture:** Even when an operator confirms their email, the frontend and backend security gates strictly block console access (`isApproved == false`), isolating them on an **Account Pending Authorization** lock screen until root clearance is recorded in the database.
 
@@ -256,7 +256,7 @@ NID SecureGuard enforces an enterprise defense-in-depth cryptographic model prot
 |        v                                                                                          |
 |  [ FastAPI Security Gateway ]                                                                     |
 |        |                                                                                          |
-|        |-- Sovereign Master Root RBAC: Bearer JWT validation (masud.nil74@gmail.com)              |
+|        |-- Sovereign Master Root RBAC: Bearer JWT validation (hasan.ire.uftb@gmail.com)          |
 |        |-- Field-Level Encryption: Ciphertext = AES-256-GCM(Plaintext, IV_96bit, Key_256bit)     |
 |        |-- Deterministic Blind Index: NID_hash = HMAC-SHA256(NID, Pepper_Key)                     |
 |        |-- Cryptographic Audit Seal: Sig = HMAC-SHA256(Canonical(Log), Audit_Secret)             |

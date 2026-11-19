@@ -66,7 +66,7 @@ async def get_current_user_claims(
 async def require_master_admin(
     claims: Annotated[dict, Depends(get_current_user_claims)],
 ) -> dict:
-    """Enforces sovereign Master Root authority (masud.nil74@gmail.com)."""
+    """Enforces sovereign Master Root authority (hasan.ire.uftb@gmail.com)."""
     if not claims.get("isMaster"):
         logger.warning(
             "Access denied: Non-master user %s attempted master action",

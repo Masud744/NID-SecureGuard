@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
-export const MASTER_ADMIN_EMAIL = 'masud.nil74@gmail.com'
-export const MASTER_ADMIN_NAME = 'Shahriar Alom Masud'
+export const MASTER_ADMIN_EMAIL = 'hasan.ire.uftb@gmail.com'
+export const MASTER_ADMIN_NAME = 'Mahmudul Hasan'
 
 export interface OperatorProfile {
   id: string

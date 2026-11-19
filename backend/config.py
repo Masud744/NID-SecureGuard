@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ESP32_DEVICE_SECRET: str = "8d4b7bd8c1ea93b8928c4c9e9786848dadb18aa54ba74eae346af847ea62ad4c"
     AUDIT_LOG_SECRET: str = "29ea053b6986f72f39c13e4dde2db1a1d89e050215c05d69d8066d3ac928cf26"
     KIOSK_API_KEY: str = "2f7e22d38ca2fe6bb4655b1c6f6ec0b7b1c735920538ea8b"
-    MASTER_ADMIN_EMAIL: str = "masud.nil74@gmail.com"
+    MASTER_ADMIN_EMAIL: str = "hasan.ire.uftb@gmail.com"
 
     model_config = {
         "env_file": (".env", "../.env"),

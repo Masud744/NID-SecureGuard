@@ -357,7 +357,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated, onLaunchKio
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Masud Hasan"
+                        placeholder="e.g. Officer Legal Name"
                         value={signUpData.fullName}
                         onChange={(e) => setSignUpData({ ...signUpData, fullName: e.target.value })}
                         className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-brand-600 focus:bg-white focus:ring-1 focus:ring-brand-600 transition-all"

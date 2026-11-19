@@ -142,7 +142,7 @@ def test_audit_log_hash_chain():
 @pytest.mark.asyncio
 async def test_require_master_admin_success():
     master_claims = {
-        "email": "masud.nil74@gmail.com",
+        "email": "hasan.ire.uftb@gmail.com",
         "isMaster": True,
         "isApproved": True,
     }
