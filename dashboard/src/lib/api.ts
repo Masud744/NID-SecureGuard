@@ -2,9 +2,13 @@ import type { HealthStatus, User, VerifyResponse, EnrollmentStatus } from '../ty
 import { supabase } from './supabase'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+const KIOSK_API_KEY = import.meta.env.VITE_KIOSK_API_KEY || '2f7e22d38ca2fe6bb4655b1c6f6ec0b7b1c735920538ea8b'
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (KIOSK_API_KEY) {
+    headers['X-Station-Key'] = KIOSK_API_KEY
+  }
   try {
     const { data } = await supabase.auth.getSession()
     if (data?.session?.access_token) {

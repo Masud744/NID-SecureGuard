@@ -204,3 +204,21 @@ async def test_user_service_transparent_encryption():
     decrypted_dict = svc._decrypt_pii(encrypted_dict)
     assert decrypted_dict["phone"] == "+8801800000000"
     assert decrypted_dict["address"] == "Mirpur, Dhaka"
+
+
+@pytest.mark.asyncio
+async def test_require_station_or_operator_station_key():
+    from config import settings
+    from core.security import require_station_or_operator
+    from unittest.mock import MagicMock
+    from fastapi import Request
+
+    mock_req = MagicMock(spec=Request)
+    mock_req.client.host = "203.0.113.195"
+    claims = await require_station_or_operator(
+        request=mock_req,
+        credentials=None,
+        x_station_key=settings.KIOSK_API_KEY,
+    )
+    assert claims["role"] == "station_kiosk"
+    assert claims["isApproved"] is True

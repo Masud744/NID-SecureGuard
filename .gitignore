@@ -17,8 +17,7 @@ node_modules/
 build/
 firmware/esp32_secureguard/credentials.h
 
-# Trained models and face data (regenerated per deployment)
-backend/data/face_model.yml
+# Trained models and face data
 backend/data/face_samples/
 
 # OS / editor junk

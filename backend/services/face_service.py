@@ -21,9 +21,27 @@ class FaceService:
         self.bridge = device_bridge
         self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
         self.recognizer = cv2.face.LBPHFaceRecognizer_create()
+
+        # If model is not local, attempt restore from Supabase Storage
+        if not MODEL_PATH.exists():
+            try:
+                from core.supabase_client import supabase
+                res = supabase.storage.from_("models").download("face_model.yml")
+                if res:
+                    DATA_DIR.mkdir(parents=True, exist_ok=True)
+                    MODEL_PATH.write_bytes(res)
+                    logger.info("Restored face_model.yml from Supabase Storage")
+            except Exception as e:
+                logger.debug("Supabase model restore skipped or failed: %s", e)
+
         if MODEL_PATH.exists():
-            self.recognizer.read(str(MODEL_PATH))
-            self._trained = True
+            try:
+                self.recognizer.read(str(MODEL_PATH))
+                self._trained = True
+                logger.info("Loaded LBPH face model from %s", MODEL_PATH)
+            except Exception as e:
+                logger.warning("Could not read face model %s: %s", MODEL_PATH, e)
+                self._trained = False
         else:
             self._trained = False
 
@@ -165,6 +183,19 @@ class FaceService:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.recognizer.save(str(MODEL_PATH))
         logger.info("Model saved with %d samples for label %d", len(samples), model_label)
+
+        try:
+            with open(MODEL_PATH, "rb") as f:
+                model_data = f.read()
+            supabase_client.storage.from_("models").upload(
+                "face_model.yml",
+                model_data,
+                file_options={"upsert": "true"},
+            )
+            logger.info("Backed up updated face_model.yml to Supabase Storage")
+        except Exception as e:
+            logger.warning("Could not sync face_model.yml to Supabase Storage: %s", e)
+
         return captured
 
     def recognize_face(
