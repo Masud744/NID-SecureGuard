@@ -103,6 +103,19 @@ export async function enrollFace(userId: string, sampleCount: number = 10): Prom
   return res.json()
 }
 
+export async function getNextSlot(): Promise<{ next_slot: number; occupied_slots: number[] }> {
+  try {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`${API_BASE}/api/v1/enroll/next-slot`, { headers })
+    if (!res.ok) {
+      return { next_slot: 6, occupied_slots: [] }
+    }
+    return res.json()
+  } catch {
+    return { next_slot: 6, occupied_slots: [] }
+  }
+}
+
 export async function enrollFingerprint(userId: string, templateId: number): Promise<EnrollmentStatus> {
   const headers = await getAuthHeaders()
   const res = await fetch(`${API_BASE}/api/v1/enroll/fingerprint/${userId}`, {

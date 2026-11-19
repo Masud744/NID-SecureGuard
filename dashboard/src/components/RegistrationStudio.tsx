@@ -23,7 +23,13 @@ import {
   Layers,
   Info,
 } from 'lucide-react'
-import { createUser, enrollFace, enrollFingerprint, getCameraSnapshotUrl } from '../lib/api'
+import {
+  createUser,
+  enrollFace,
+  enrollFingerprint,
+  getCameraSnapshotUrl,
+  getNextSlot,
+} from '../lib/api'
 import type { User } from '../types'
 
 interface RegistrationStudioProps {
@@ -47,8 +53,23 @@ export const RegistrationStudio: React.FC<RegistrationStudioProps> = ({
   const [isLoading, setIsLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [statusText, setStatusText] = useState('')
-  const [templateSlot, setTemplateSlot] = useState(5)
+  const [templateSlot, setTemplateSlot] = useState(6)
+  const [occupiedSlots, setOccupiedSlots] = useState<number[]>([])
   const [snapshotUrl, setSnapshotUrl] = useState(getCameraSnapshotUrl(false))
+
+  // Fetch next available free slot from database on mount and when entering Step 3
+  useEffect(() => {
+    getNextSlot()
+      .then((data) => {
+        if (data?.next_slot) {
+          setTemplateSlot(data.next_slot)
+        }
+        if (data?.occupied_slots) {
+          setOccupiedSlots(data.occupied_slots)
+        }
+      })
+      .catch(() => {})
+  }, [step])
 
   // Refresh preview from cache every 4s when on Step 2
   useEffect(() => {
@@ -100,6 +121,10 @@ export const RegistrationStudio: React.FC<RegistrationStudioProps> = ({
   // Step 3: Trigger Fingerprint Enrollment on Hardware
   const handleFingerprintEnroll = async () => {
     if (!createdUser) return
+    if (occupiedSlots.includes(templateSlot)) {
+      setErrorMsg(`Template slot ${templateSlot} is already assigned to another citizen. Please select an unused slot.`)
+      return
+    }
     setIsLoading(true)
     setErrorMsg(null)
     setStatusText(
@@ -535,16 +560,33 @@ export const RegistrationStudio: React.FC<RegistrationStudioProps> = ({
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Sensor Memory Slot (Template ID)
                       </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={200}
-                        value={templateSlot}
-                        onChange={(e) => setTemplateSlot(Number(e.target.value))}
-                        className="w-32 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-mono text-xs font-bold focus:outline-none focus:border-brand-600"
-                      />
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Auto-suggested empty slot in R307S flash.
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min={1}
+                          max={200}
+                          value={templateSlot}
+                          onChange={(e) => setTemplateSlot(Number(e.target.value))}
+                          className={`w-28 px-3 py-2 rounded-xl bg-white border font-mono text-xs font-bold focus:outline-none transition-colors ${
+                            occupiedSlots.includes(templateSlot)
+                              ? 'border-rose-400 text-rose-700 focus:border-rose-600'
+                              : 'border-slate-200 text-slate-800 focus:border-brand-600'
+                          }`}
+                        />
+                        {occupiedSlots.includes(templateSlot) ? (
+                          <span className="text-xs text-rose-600 font-semibold flex items-center gap-1">
+                            Slot {templateSlot} is already assigned
+                          </span>
+                        ) : (
+                          <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                            Slot {templateSlot} is available
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1.5">
+                        {occupiedSlots.length > 0
+                          ? `Occupied slots: ${occupiedSlots.join(', ')}. Next available: Slot ${templateSlot}.`
+                          : 'Auto-suggested empty slot in R307S flash (1-200).'}
                       </p>
                     </div>
 
@@ -568,7 +610,7 @@ export const RegistrationStudio: React.FC<RegistrationStudioProps> = ({
                     <button
                       type="button"
                       onClick={handleFingerprintEnroll}
-                      disabled={isLoading}
+                      disabled={isLoading || occupiedSlots.includes(templateSlot)}
                       className="px-6 py-2.5 rounded-xl bg-brand-850 hover:bg-brand-900 disabled:opacity-50 text-white font-bold text-xs transition-all flex items-center gap-2 shadow-sm shadow-brand-950/20 cursor-pointer"
                     >
                       {isLoading ? (
