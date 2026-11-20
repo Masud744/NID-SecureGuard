@@ -36,3 +36,7 @@ Thumbs.db
 *.lof
 *.lot
 *.out
+
+# Reference materials
+report/ref report/
+report/main.pdf
