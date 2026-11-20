@@ -8,6 +8,7 @@
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{multirow}
+\usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{fancyhdr}
 \usepackage{titlesec}
@@ -18,6 +19,12 @@
 \usepackage{microtype}
 \usepackage{setspace}
 \usepackage{hyperref}
+
+% Float management to prevent awkward empty spaces
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.85}
 
 % Color definitions
 \definecolor{primarydark}{RGB}{15, 23, 42}       % #0f172a
@@ -65,40 +72,60 @@
 
 % ==================== COVER PAGE ====================
 \begin{titlepage}
+    % Outer Frame Border matching reference report style
+    \begin{tikzpicture}[remember picture, overlay]
+        \draw[line width=1.5pt, color=black] 
+            ($(current page.north west) + (1.2cm,-1.2cm)$) 
+            rectangle 
+            ($(current page.south east) + (-1.2cm,1.2cm)$);
+    \end{tikzpicture}
+    
     \centering
-    \vspace*{0.5cm}
+    \vspace*{0.2cm}
     
     {\Large\bfseries NID SECUREGUARD: A CYBER-PHYSICAL MULTI-MODAL BIOMETRIC VERIFICATION ARCHITECTURE WITH HARDWARE HMAC AUTHENTICATION AND TAMPER-EVIDENT AUDIT CHAINING\par}
     
-    \vspace{2.0cm}
+    \vspace{0.4cm}
+    \noindent\rule{\textwidth}{1.0pt}
+    
+    \vspace{1.0cm}
     {\large\bfseries [COURSE TITLE - e.g. IRE 302]\par}
     
-    \vspace{2.2cm}
-    {\large\bfseries SUBMITTED BY -\par}
-    \vspace{0.4cm}
+    \vspace{1.1cm}
+    {\small\textit{SUBMITTED BY -}\par}
+    \vspace{0.3cm}
     {\large\bfseries MAHMUDUL HASAN\par}
-    {\large STUDENT ID: [STUDENT ID]\par}
-    {\large SESSION: [SESSION]\par}
+    \vspace{0.15cm}
+    {\normalsize STUDENT ID: [STUDENT ID]\par}
+    {\normalsize SESSION: [SESSION]\par}
     
-    \vspace{2.4cm}
-    {\large\bfseries SUPERVISED BY -\par}
-    \vspace{0.4cm}
+    \vspace{1.1cm}
+    {\small\textit{SUPERVISED BY -}\par}
+    \vspace{0.3cm}
     {\large\bfseries [SUPERVISOR NAME]\par}
-    {\large [DESIGNATION]\par}
-    {\large DEPARTMENT OF INTERNET OF THINGS AND ROBOTICS ENGINEERING (IRE)\par}
-    {\large UNIVERSITY OF FRONTIER TECHNOLOGY, BANGLADESH\par}
+    \vspace{0.15cm}
+    {\normalsize [DESIGNATION]\par}
+    {\normalsize DEPARTMENT OF INTERNET OF THINGS AND ROBOTICS ENGINEERING (IRE)\par}
+    {\normalsize UNIVERSITY OF FRONTIER TECHNOLOGY, BANGLADESH\par}
+    
+    \vspace{0.8cm}
+    \includegraphics[height=2.7cm,keepaspectratio]{uftb_logo.png}\par
     
     \vfill
     
     {\large\bfseries FACULTY OF CYBER PHYSICAL SYSTEM ENGINEERING\par}
+    \vspace{0.1cm}
     {\large\bfseries DEPARTMENT OF INTERNET OF THINGS AND ROBOTICS ENGINEERING (IRE)\par}
+    \vspace{0.1cm}
     {\large\bfseries UNIVERSITY OF FRONTIER TECHNOLOGY, BANGLADESH\par}
     \vspace{0.3cm}
-    {\large [DATE - e.g. NOVEMBER 2026]\par}
+    {\normalsize [DATE - e.g. NOVEMBER 2026]\par}
+    \vspace*{0.2cm}
 \end{titlepage}
 
 \clearpage
 \pagenumbering{arabic}
+\markboth{}{}
 
 % ==================== ABSTRACT ====================
 \begin{abstract}
@@ -141,12 +168,12 @@ The edge IoT layer is designed as an autonomous physical station. The ESP32-S3 m
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
-    node distance=1.3cm and 1.0cm,
-    hw/.style={rectangle, draw=brandgreen, fill=accentemerald!12, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.0cm},
-    proxy/.style={rectangle, draw=primarydark, fill=codebg, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.0cm},
-    backend/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.0cm},
-    db/.style={cylinder, shape border rotate=90, draw=purple!80!black, fill=purple!5, thick, aspect=0.25, text width=3.2cm, align=center, minimum height=1.0cm},
-    arrow/.style={draw=primarydark, -{Latex[length=2.5mm]}, thick}
+    node distance=0.7cm and 0.8cm,
+    hw/.style={rectangle, draw=brandgreen, fill=accentemerald!12, thick, rounded corners, text width=3.4cm, align=center, minimum height=0.75cm, font=\small},
+    proxy/.style={rectangle, draw=primarydark, fill=codebg, thick, rounded corners, text width=3.4cm, align=center, minimum height=0.75cm, font=\small},
+    backend/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners, text width=3.4cm, align=center, minimum height=0.75cm, font=\small},
+    db/.style={cylinder, shape border rotate=90, draw=purple!80!black, fill=purple!5, thick, aspect=0.25, text width=3.0cm, align=center, minimum height=0.75cm, font=\small},
+    arrow/.style={draw=primarydark, -{Latex[length=2.2mm]}, thick}
 ]
 
 % Nodes
@@ -161,7 +188,7 @@ The edge IoT layer is designed as an autonomous physical station. The ESP32-S3 m
 % Connectors
 \path[arrow] (cam) -- (esp);
 \path[arrow] (fp) -- (esp);
-\path[arrow] (esp) -- node[right]{\small HMAC-Signed HTTP} (tunnel);
+\path[arrow] (esp) -- node[right, font=\footnotesize]{\,HMAC-Signed HTTP} (tunnel);
 \path[arrow] (tunnel) -- (api);
 \path[arrow] (api) -- (db);
 
@@ -178,25 +205,27 @@ To prevent bus contention between high-throughput Direct Memory Access (DMA) cam
 \small
 \caption{ESP32-S3 Hardware Pinout and Peripheral Mapping.}
 \label{tab:pinout}
-\begin{tabularx}{\textwidth}{p{3.0cm} p{2.2cm} p{2.8cm} X}
+\begin{tabularx}{\textwidth}{l l l X}
 \toprule
 \textbf{Peripheral} & \textbf{Pin Function} & \textbf{ESP32-S3 GPIO} & \textbf{Electrical Specification} \\
 \midrule
-\multirow{4}{*}{\textbf{Grow R307S Fingerprint}}
- & VCC & 5V / VBUS & 5.0\,V DC, 120\,mA peak current \\
- & GND & GND & Common System Ground \\
- & TXD (Sensor Output) & GPIO 1 (U1RXD) & 3.3\,V TTL Serial @ 57,600 baud \\
- & RXD (Sensor Input)  & GPIO 2 (U1TXD) & 3.3\,V TTL Serial @ 57,600 baud \\
+\multicolumn{4}{l}{\textbf{Grow R307S Optical Fingerprint Sensor (500 DPI, UART1)}} \\
 \midrule
-\multirow{8}{*}{\textbf{OV2640 Camera Module}}
- & D0 -- D7 (Data Bus) & GPIO 10--12, 14--18 & 8-bit Parallel DVP Interface \\
- & XCLK (Master Clock)  & GPIO 13 & 20.0\,MHz PWM Master Clock \\
- & PCLK (Pixel Clock)   & GPIO 21 & High-speed pixel clock input \\
- & VSYNC (Vertical Sync)& GPIO 38 & Frame start synchronization \\
- & HREF (Horizontal Ref)& GPIO 47 & Line valid delimiter \\
- & SIOD (SCCB Data)     & GPIO 39 & $I^2C$ Data bus (internal pull-up) \\
- & SIOC (SCCB Clock)    & GPIO 40 & $I^2C$ Clock line (100\,kHz) \\
- & PWDN / RESET         & GPIO 3 / GPIO 48 & Power down control \& Hardware reset \\
+VCC & Power Supply & 5V / VBUS & 5.0\,V DC, 120\,mA peak current \\
+GND & System Ground & GND & Common system ground \\
+TXD & Sensor Output & GPIO 1 (U1RXD) & 3.3\,V TTL serial @ 57,600 baud \\
+RXD & Sensor Input & GPIO 2 (U1TXD) & 3.3\,V TTL serial @ 57,600 baud \\
+\midrule
+\multicolumn{4}{l}{\textbf{OV2640 Optical Camera Module (Parallel DVP Interface)}} \\
+\midrule
+D0 -- D7 & 8-bit Data Bus & GPIO 10--12, 14--18 & High-speed parallel video data lines \\
+XCLK & Master Clock & GPIO 13 & 20.0\,MHz PWM generated master clock \\
+PCLK & Pixel Clock & GPIO 21 & Pixel clock synchronizer input \\
+VSYNC & Vertical Sync & GPIO 38 & Frame start and end sync marker \\
+HREF & Horizontal Reference & GPIO 47 & Active line valid marker \\
+SIOD & SCCB Data Bus & GPIO 39 & $I^2C$ data line with internal pull-up \\
+SIOC & SCCB Clock Bus & GPIO 40 & $I^2C$ clock line (100\,kHz) \\
+PWDN / RESET & Power / Reset & GPIO 3 / GPIO 48 & Power-down control \& hardware reset \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -278,37 +307,45 @@ NID SecureGuard employs a conjunctive 1:1 matching policy rather than unconstrai
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
-    node distance=0.9cm and 0.8cm,
-    startstop/.style={rectangle, rounded corners, minimum width=2.8cm, minimum height=0.8cm, text centered, align=center, draw=primarydark, fill=codebg, thick, font=\small},
-    process/.style={rectangle, minimum width=3.2cm, minimum height=0.8cm, text centered, align=center, draw=blue!70!black, fill=blue!5, thick, font=\small},
-    decision/.style={diamond, aspect=1.8, text centered, align=center, draw=purple!80!black, fill=purple!5, thick, inner sep=2pt, font=\small},
-    arrow/.style={thick, -{Latex[length=2.5mm]}, draw=primarydark}
+    node distance=0.55cm and 0.8cm,
+    startstop/.style={rectangle, rounded corners, minimum width=2.8cm, minimum height=0.7cm, text centered, align=center, draw=primarydark, fill=codebg, thick, font=\small},
+    process/.style={rectangle, minimum width=3.0cm, minimum height=0.7cm, text centered, align=center, draw=blue!70!black, fill=blue!5, thick, font=\small},
+    decision/.style={diamond, aspect=2.0, text centered, align=center, draw=purple!80!black, fill=purple!5, thick, inner sep=2pt, font=\small},
+    arrow/.style={thick, -{Latex[length=2.2mm]}, draw=primarydark}
 ]
 
 \node[startstop] (start) {Citizen Inputs NID};
 \node[process, below=of start] (lookup) {HMAC Blind Index Search};
 \node[decision, below=of lookup] (exists) {Citizen Enrolled?};
-\node[process, right=1.0cm of exists] (unreg) {Prompt Enrollment};
+\node[process, right=1.2cm of exists] (unreg) {Prompt Enrollment};
 \node[process, below=of exists] (trigger) {Trigger Multi-Modal Capture};
 
-\node[process, below left=1.0cm and 0.2cm of trigger] (face) {OpenCV LBPH Face\\$\chi^2 \le 80.0$};
-\node[process, below right=1.0cm and 0.2cm of trigger] (fp) {R307S Minutiae\\Assigned Slot Match};
+\node[process, below left=0.7cm and 0.3cm of trigger] (face) {OpenCV LBPH Face\\$\chi^2 \le 80.0$};
+\node[process, below right=0.7cm and 0.3cm of trigger] (fp) {R307S Minutiae\\Assigned Slot Match};
 
-\node[decision, below=2.3cm of trigger] (dual) {Both Biometrics Pass?};
-\node[startstop, below=1.0cm of dual] (grant) {\textbf{ACCESS GRANTED}};
-\node[startstop, right=1.2cm of dual] (deny) {\textbf{ACCESS DENIED}};
-\node[process, below=0.8cm of grant] (log) {Append Hash-Chained Seal};
+\node[decision, below=2.0cm of trigger] (dual) {Both Biometrics Pass?};
+\node[startstop, right=1.5cm of dual] (deny) {\textbf{ACCESS DENIED}};
+\node[startstop, below=0.8cm of dual] (grant) {\textbf{ACCESS GRANTED}};
+\node[process, below=0.7cm of grant] (log) {Append Hash-Chained Seal};
 
+% Connectors
 \path[arrow] (start) -- (lookup);
 \path[arrow] (lookup) -- (exists);
-\path[arrow] (exists) -- node[right]{\footnotesize Yes} (trigger);
-\path[arrow] (exists) -- node[above]{\footnotesize No} (unreg);
+\path[arrow] (exists) -- node[right, font=\footnotesize]{Yes} (trigger);
+\path[arrow] (exists) -- node[above, font=\footnotesize]{No} (unreg);
+
 \path[arrow] (trigger) -| (face);
 \path[arrow] (trigger) -| (fp);
-\path[arrow] (face) |- (dual);
-\path[arrow] (fp) |- (dual);
-\path[arrow] (dual) -- node[right]{\footnotesize Yes} (grant);
-\path[arrow] (dual) -- node[above]{\footnotesize No} (deny);
+
+% Cleanly route face and fp into dual without crossing deny
+\path[arrow] (face.south) -- ++(0,-0.35) -| ([xshift=-0.5cm]dual.north);
+\path[arrow] (fp.south) -- ++(0,-0.35) -| ([xshift=0.5cm]dual.north);
+
+% Decisions
+\path[arrow] (dual) -- node[above, font=\footnotesize]{No} (deny);
+\path[arrow] (dual) -- node[right, font=\footnotesize]{Yes} (grant);
+
+% Completion
 \path[arrow] (grant) -- (log);
 \path[arrow] (deny) |- (log);
 
@@ -408,7 +445,7 @@ The system was evaluated against simulated physical and network attack vectors (
 \centering
 \caption{Adversarial Security Evaluation Results.}
 \label{tab:security_eval}
-\begin{tabularx}{\textwidth}{p{3.5cm} X p{3.8cm}}
+\begin{tabularx}{\textwidth}{p{3.8cm} X p{4.6cm}}
 \toprule
 \textbf{Attack Vector} & \textbf{Simulated Attack Condition} & \textbf{System Defense Mechanism} \\
 \midrule
@@ -416,9 +453,9 @@ The system was evaluated against simulated physical and network attack vectors (
 \addlinespace
 \textbf{Payload Tampering} & Altering decision payload while retaining valid signature. & Constant-time HMAC mismatch; transaction dropped. \\
 \addlinespace
-\textbf{Database Log Manipulation} & Manual SQL update of \texttt{access\_decision} column in PostgreSQL. & Verification scan flags broken hash link $H_i \ne \text{SHA256}(H_{i-1} \parallel L_i)$. \\
+\textbf{Database Tampering} & Manual SQL update of \texttt{access\_decision} column in PostgreSQL. & Verification scan flags broken hash link $H_i \ne \text{SHA256}(H_{i-1} \parallel L_i)$. \\
 \addlinespace
-\textbf{2D Photo Presentation} & High-resolution mobile screen photo presented to camera. & Optical fingerprint mismatch blocks access under 1:1 rule. \\
+\textbf{2D Photo Spoofing} & High-resolution mobile screen photo presented to camera. & Optical fingerprint mismatch blocks access under 1:1 rule. \\
 \bottomrule
 \end{tabularx}
 \end{table}
