@@ -1,14 +1,13 @@
-\documentclass[12pt,a4paper]{report}
+\documentclass[11pt,a4paper]{article}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
-\usepackage[margin=1in,left=1.25in,right=1in,top=1in,bottom=1in]{geometry}
+\usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{multirow}
-\usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{fancyhdr}
 \usepackage{titlesec}
@@ -16,7 +15,6 @@
 \usetikzlibrary{shapes.geometric,arrows.meta,positioning,calc}
 \usepackage{enumitem}
 \usepackage{caption}
-\usepackage{subcaption}
 \usepackage{microtype}
 \usepackage{setspace}
 \usepackage{hyperref}
@@ -35,58 +33,54 @@
     citecolor=brandgreen,
     filecolor=brandgreen,
     urlcolor=brandgreen,
-    pdftitle={NID SecureGuard: Cyber-Physical Biometric Architecture Technical Report},
+    pdftitle={NID SecureGuard: Laboratory Project Report},
     pdfauthor={Mahmudul Hasan},
     pdfsubject={Cyber-Physical Systems and Biometric Security}
 }
 
-% Set one-half line spacing for human academic report feel
+% Line spacing
 \onehalfspacing
 
 % Header and Footer configuration
-\setlength{\headheight}{15pt}
+\setlength{\headheight}{14.5pt}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\color{gray}NID SecureGuard: Project Report}
+\fancyhead[L]{\small\color{gray}NID SecureGuard: Laboratory Project Report}
 \fancyhead[R]{\small\color{gray}\nouppercase{\leftmark}}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0.4pt}
 
-% Chapter and Section titles formatting
-\titleformat{\chapter}[display]
-  {\normalfont\bfseries\color{primarydark}}
-  {\filleft\large\scshape Chapter \thechapter}
-  {1ex}
-  {\titlerule[1.2pt]\vspace{1ex}\LARGE}
-  [\vspace{1ex}{\titlerule[0.4pt]}]
-
+% Section titles formatting (Clean single titles)
 \titleformat{\section}
-  {\normalfont\large\bfseries\color{primarydark}}{\thesection}{1em}{}
+  {\normalfont\Large\bfseries\color{primarydark}}{\thesection}{1em}{}
 
 \titleformat{\subsection}
-  {\normalfont\normalsize\bfseries\color{primarydark}}{\thesubsection}{1em}{}
+  {\normalfont\large\bfseries\color{primarydark}}{\thesubsection}{1em}{}
+
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\color{primarydark}}{\thesubsubsection}{1em}{}
 
 \begin{document}
 
 % ==================== COVER PAGE ====================
 \begin{titlepage}
     \centering
-    \vspace*{0.3cm}
+    \vspace*{0.5cm}
     
     {\Large\bfseries NID SECUREGUARD: A CYBER-PHYSICAL MULTI-MODAL BIOMETRIC VERIFICATION ARCHITECTURE WITH HARDWARE HMAC AUTHENTICATION AND TAMPER-EVIDENT AUDIT CHAINING\par}
     
-    \vspace{1.8cm}
-    {\large\bfseries [PROJECT / COURSE TITLE - e.g. IRE 300]\par}
-    
     \vspace{2.0cm}
+    {\large\bfseries [COURSE TITLE - e.g. IRE 302]\par}
+    
+    \vspace{2.2cm}
     {\large\bfseries SUBMITTED BY -\par}
     \vspace{0.4cm}
     {\large\bfseries MAHMUDUL HASAN\par}
     {\large STUDENT ID: [STUDENT ID]\par}
     {\large SESSION: [SESSION]\par}
     
-    \vspace{2.2cm}
+    \vspace{2.4cm}
     {\large\bfseries SUPERVISED BY -\par}
     \vspace{0.4cm}
     {\large\bfseries [SUPERVISOR NAME]\par}
@@ -100,213 +94,91 @@
     {\large\bfseries DEPARTMENT OF INTERNET OF THINGS AND ROBOTICS ENGINEERING (IRE)\par}
     {\large\bfseries UNIVERSITY OF FRONTIER TECHNOLOGY, BANGLADESH\par}
     \vspace{0.3cm}
-    {\large [MONTH YEAR - e.g. NOVEMBER 2026]\par}
+    {\large [DATE - e.g. NOVEMBER 2026]\par}
 \end{titlepage}
 
-% ==================== PREAMBLE (ROMAN NUMBERING) ====================
-\pagenumbering{roman}
-
-% --- Declaration ---
-\chapter*{Declaration}
-\addcontentsline{toc}{chapter}{Declaration}
-
-I hereby sincerely declare that the project report entitled \textbf{``NID SecureGuard: A Cyber-Physical Multi-Modal Biometric Verification Architecture with Hardware HMAC Authentication and Tamper-Evident Audit Chaining''}, submitted by me, is an original work completed for the course \textbf{[PROJECT / COURSE TITLE - e.g. IRE 300]} at the University of Frontier Technology, Bangladesh. 
-
-This work has not been previously reported or submitted for the award of any degree, diploma, or certificate at any other university or educational institution. All non-original concepts, formulations, hardware modules, and software libraries utilized during the development of this project have been acknowledged in accordance with academic standards.
-
-\vspace{3cm}
-
-\noindent
-\begin{tabular}{@{}l}
-\rule{6.5cm}{0.6pt}\\
-\textbf{Mahmudul Hasan}\\
-Student ID: [STUDENT ID]\\
-Session: [SESSION]\\
-Department of Internet of Things and Robotics Engineering (IRE)\\
-University of Frontier Technology, Bangladesh
-\end{tabular}
-
 \clearpage
-
-% --- Approval ---
-\chapter*{Approval}
-\addcontentsline{toc}{chapter}{Approval}
-
-This project report titled \textbf{``NID SecureGuard: A Cyber-Physical Multi-Modal Biometric Verification Architecture with Hardware HMAC Authentication and Tamper-Evident Audit Chaining''}, submitted by \textbf{Mahmudul Hasan} (Student ID: [STUDENT ID], Session: [SESSION]), has been accepted and approved in partial fulfillment of the academic requirements for the degree of Bachelor of Science in Internet of Things and Robotics Engineering.
-
-\vspace{2.0cm}
-
-\begin{center}
-\textbf{Examining Committee}
-\end{center}
-
-\vspace{1.5cm}
-
-\noindent
-\begin{tabular}{@{}p{0.48\textwidth}@{\hspace{0.04\textwidth}}p{0.48\textwidth}@{}}
-\rule{6.5cm}{0.5pt} & \rule{6.5cm}{0.5pt}\\
-\textbf{[SUPERVISOR NAME]} & \textbf{[INTERNAL EXAMINER NAME]}\\
-Supervisor & Internal Examiner\\
-Assistant Professor & Assistant Professor\\
-Department of IRE, UFTB & Department of IRE, UFTB\\[3.0cm]
-
-\rule{6.5cm}{0.5pt} & \rule{6.5cm}{0.5pt}\\
-\textbf{[HEAD OF DEPARTMENT NAME]} & \textbf{[EXTERNAL EXAMINER NAME]}\\
-Head of Department & External Examiner\\
-Associate Professor & Professor / Industry Expert\\
-Department of IRE, UFTB & External Institution\\[1.5cm]
-\end{tabular}
-
-\clearpage
-
-% --- Abstract ---
-\chapter*{Abstract}
-\addcontentsline{toc}{chapter}{Abstract}
-
-National Identity (NID) authentication kiosks are vital to modern public services, social safety nets, electoral integrity, and electronic governance. However, real-world deployments frequently suffer from physical edge tampering, serial bus snooping, replay attacks, unencrypted citizen databases, and non-verifiable administrative audit logs. 
-
-To address these vulnerabilities, this project presents \textbf{NID SecureGuard}, an end-to-end, multi-tier cyber-physical architecture designed for secure citizen identity verification. The framework integrates an edge IoT station based on the ESP32-S3 dual-core microcontroller, an OV2640 optical camera, and an R307S 500~DPI optical fingerprint module. Edge-to-cloud security is established through hardware-level HMAC-SHA256 digital signatures with a 60-second microsecond timestamp freshness window ($\Delta t \le 60\text{s}$), completely neutralizing replay and packet-injection attacks.
-
-Citizen verification executes under a strict 1:1 multi-modal authentication policy, combining Local Binary Patterns Histograms (LBPH) facial recognition evaluated via a Chi-square distance metric ($\chi^2 \le 80.0$) with hardware-isolated optical minutiae matching. All citizen Personally Identifiable Information (PII) is secured in a Supabase PostgreSQL database using AES-256-GCM field-level encryption, while search queries are resolved through zero-knowledge deterministic HMAC blind indexes. Administrative auditability is ensured by an immutable forward-chained cryptographic ledger ($H_i = \text{SHA256}(H_{i-1} \parallel \text{Canonical}(L_i))$) signed with HMAC seals. Benchmarks over live network tunnels show a total verification transaction time of $1.39 \pm 0.12$ seconds with a composite False Acceptance Rate (FAR) under $0.0001\%$, providing an enterprise-grade defense against physical and cyber attack vectors.
-
-\clearpage
-
-% --- Acknowledgement ---
-\chapter*{Acknowledgement}
-\addcontentsline{toc}{chapter}{Acknowledgement}
-
-First and foremost, I express my deepest gratitude to Almighty for bestowing the strength, patience, and guidance necessary to bring this engineering project to fruition.
-
-I extend my sincere appreciation to my project supervisor, \textbf{[SUPERVISOR NAME]}, [DESIGNATION], Department of Internet of Things and Robotics Engineering (IRE), University of Frontier Technology, Bangladesh. Their academic mentorship, critical technical insights, and consistent encouragement have been indispensable throughout the system design and implementation phases.
-
-I also express my gratitude to the faculty members and technical staff of the Department of Internet of Things and Robotics Engineering for their guidance and institutional support. Finally, I thank my family and friends for their enduring moral support and understanding throughout this work.
-
-\vspace{1.5cm}
-\noindent
-\textbf{Mahmudul Hasan}\\
-University of Frontier Technology, Bangladesh
-
-\clearpage
-
-% --- Table of Contents, Figures, Tables ---
-\tableofcontents
-\listoffigures
-\listoftables
-\clearpage
-
-% ==================== MAIN BODY (ARABIC NUMBERING) ====================
 \pagenumbering{arabic}
 
-\chapter{Introduction and Problem Statement}
+% ==================== ABSTRACT ====================
+\begin{abstract}
+National Identity (NID) authentication kiosks are essential to modern public administration, civic security, and social safety net distribution. However, conventional verification stations frequently suffer from peripheral hardware spoofing, serial bus sniffing, network replay attacks, unencrypted citizen databases, and mutable audit trails. This report presents \textbf{NID SecureGuard}, an end-to-end cyber-physical architecture designed for secure, multi-modal identity verification. The system combines an edge IoT station powered by an ESP32-S3 dual-core microcontroller, an OV2640 optical camera, and an R307S 500~DPI optical fingerprint sensor. Edge-to-cloud security is established via hardware-level HMAC-SHA256 digital signatures with a 60-second microsecond timestamp freshness window ($\Delta t \le 60\text{s}$), completely defeating network replay and packet injection attacks. Identity authentication executes under a strict 1:1 multi-modal policy combining OpenCV Local Binary Patterns Histograms (LBPH) facial recognition ($\chi^2 \le 80.0$) with on-chip optical minutiae matching. All citizen Personally Identifiable Information (PII) is encrypted at the application boundary using AES-256-GCM, with search queries resolved through zero-knowledge deterministic HMAC blind indexing. System access logs are secured in an immutable forward-chained cryptographic ledger ($H_i = \text{SHA256}(H_{i-1} \parallel \text{Canonical}(L_i))$) signed with digital HMAC seals. Empirical laboratory benchmarks over live cellular tunnels demonstrate an end-to-end verification transaction latency of $1.39 \pm 0.12$ seconds and a composite False Acceptance Rate (FAR) under $0.0001\%$, providing defense-in-depth protection against cyber-physical intrusion.
+\end{abstract}
 
-\section{Background}
-Electronic National Identity (e-NID) systems serve as the structural backbone for public service delivery, automated border gates, financial KYC onboarding, and civic security. As identity authentication shifts from manual paper credentials to automated biometric stations, the physical and network boundaries of identity kiosks have become primary targets for adversarial intrusion.
+\vspace{0.5cm}
 
-In typical operational environments, an identity terminal captures two pieces of citizen biometric evidence: a live facial portrait and an optical fingerprint. However, in legacy implementations, the physical capturing devices (webcams and USB optical sensors) communicate over open, unauthenticated serial and USB interfaces. The host computer or client operating system trusts the received payloads implicitly, creating severe vulnerability surfaces.
+% ==================== 1. INTRODUCTION ====================
+\section{Introduction}
 
-\section{Problem Statement}
-Existing biometric verification terminals exhibit five fundamental systemic deficiencies:
+\subsection{Background}
+Electronic National Identity (e-NID) systems serve as the structural foundation for civic registration, banking KYC onboarding, electoral integrity, and social benefits disbursement. As identity authentication shifts from manual visual inspection to automated biometric kiosks, the physical and network boundaries of peripheral hardware have become primary targets for adversarial intrusion. In typical verification scenarios, a citizen terminal captures two physical biometric signals: a live facial portrait and an optical fingerprint. However, in legacy implementations, the physical capturing devices communicate over unauthenticated serial (UART) and USB interfaces. The host computer or client operating system trusts the received payloads implicitly, creating an expansive attack surface.
+
+\subsection{Problem Statement}
+Contemporary biometric verification terminals exhibit four major systemic vulnerabilities:
 \begin{enumerate}[label=\textbf{\arabic*.}]
-    \item \textbf{Peripheral Hardware Spoofing:} Standard sensors do not cryptographically authenticate their physical identity to the central server. An adversary with physical access can intercept serial lines or use an emulator to inject pre-recorded successful biometric signals.
-    \item \textbf{Network Man-in-the-Middle Replay Attacks:} Telemetry packets transmitted over local or cellular bridges lack cryptographic time-freshness guarantees, allowing attackers to capture valid authorization messages and replay them later.
-    \item \textbf{Unprotected Biographical Storage:} Citizen databases routinely store names, addresses, and phone numbers in cleartext. Compromise of database storage leads to immediate mass identity theft.
-    \item \textbf{Single-Point Biometric Failure:} Terminals relying on a single biometric modality suffer from either high False Rejection Rates (FRR) under poor lighting or high vulnerability to presentation attacks (e.g., printed 2D photos).
-    \item \textbf{Mutable Audit Trails:} System access logs stored in standard database tables can be modified or expunged by rogue administrative accounts without generating mathematical evidence of tampering.
+    \item \textbf{Peripheral Hardware Spoofing:} Standard optical sensors do not cryptographically sign their match events. An adversary with physical access can intercept serial lines or connect a software emulator to inject pre-recorded successful match packets.
+    \item \textbf{Network Replay Attacks:} Telemetry packets transmitted over local or cellular bridges lack cryptographic time-freshness guarantees, allowing attackers to intercept valid authorization messages and replay them later.
+    \item \textbf{Unprotected Biographical Storage:} Citizen databases routinely store names, residential addresses, and phone numbers in cleartext, exposing millions of citizens to identity theft upon database compromise.
+    \item \textbf{Mutable System Logs:} Conventional access logs stored in standard database tables can be modified or expunged by compromised administrator credentials without leaving a mathematical trail of tampering.
 \end{enumerate}
 
-\section{Project Objectives}
-\subsection{General Objective}
-The primary objective of this project is to design, implement, and benchmark \textbf{NID SecureGuard}—a cyber-physical multi-modal biometric verification terminal that enforces hardware-level cryptographic attestation, zero-knowledge PII encryption, dual-factor authentication, and tamper-evident audit chaining.
-
-\subsection{Specific Objectives}
-To achieve this primary goal, five specific technical milestones were established:
+\subsection{Project Objectives}
+The core objective of this project is to implement and benchmark a tamper-resistant cyber-physical biometric verification architecture. The specific technical goals include:
 \begin{itemize}[leftmargin=2em]
-    \item Construct an embedded edge hardware station combining an ESP32-S3 microcontroller, an OV2640 camera, and an R307S 500~DPI optical sensor.
-    \item Implement an edge-to-cloud cryptographic protocol utilizing ESP32 \texttt{mbedtls} hardware HMAC-SHA256 signatures with a 60-second microsecond timestamp drift window to prevent replay attacks.
-    \item Formulate a 1:1 multi-modal biometric pipeline combining Haar-Laplacian contrast-filtered OpenCV LBPH facial recognition ($\chi^2 \le 80.0$) with on-chip optical minutiae matching.
-    \item Engineer a privacy-preserving storage model utilizing AES-256-GCM authenticated encryption for biographical attributes and deterministic HMAC blind indexing for zero-knowledge NID lookups.
-    \item Develop an immutable forensic audit ledger structured as a forward-chained cryptographic hash chain ($H_i = \text{SHA256}(H_{i-1} \parallel \text{Canonical}(L_i))$) signed with digital HMAC seals.
+    \item Building an embedded edge station utilizing an ESP32-S3 microcontroller, an OV2640 camera, and an R307S 500~DPI optical fingerprint sensor.
+    \item Enforcing edge-to-cloud cryptographic attestation through hardware-level HMAC-SHA256 signatures with a 60-second microsecond timestamp drift window.
+    \item Implementing a conjunctive 1:1 multi-modal biometric pipeline combining Haar-Laplacian contrast-filtered OpenCV LBPH facial recognition with on-chip optical minutiae matching.
+    \item Implementing application-level AES-256-GCM encryption for all sensitive citizen biographical data and deterministic HMAC blind indexing for zero-knowledge relational lookups.
+    \item Designing an immutable forensic audit ledger structured as a forward-chained cryptographic hash chain ($H_i = \text{SHA256}(H_{i-1} \parallel \text{Canonical}(L_i))$) sealed with digital HMAC signatures.
 \end{itemize}
 
-\section{Summary of Key Contributions}
-The key contributions realized in this project are:
-\begin{enumerate}
-    \item \textbf{Hardware Cryptographic Attestation:} Eliminating serial/network sensor spoofing by generating digital signatures directly within the microcontroller hardware engine.
-    \item \textbf{Conjunctive Multi-Modal Fusion:} Enforcing a simultaneous 1:1 dual-biometric gating policy that reduces composite False Acceptance Rates to negligible levels ($< 0.0001\%$).
-    \item \textbf{Zero-Plaintext Citizen Database:} Securing all citizen PII via AES-256-GCM and enabling exact-match search through an HMAC-SHA256 blind index without database decryption.
-    \item \textbf{Mathematical Audit Ledger:} Guaranteeing administrative non-repudiation through immutable cryptographic hash chaining that detects single-bit historical alterations.
-    \item \textbf{Dynamic Hardware Slot Allocation:} Implementing automated flash memory allocation to prevent optical sensor template overwriting during multi-user onboarding.
-\end{enumerate}
+% ==================== 2. HARDWARE IMPLEMENTATION ====================
+\section{Hardware Implementation}
 
-\section{Report Organization}
-The remainder of this report is structured as follows: Chapter~2 details the master cyber-physical system architecture and hardware interfacing. Chapter~3 presents the cryptographic foundations and security protocols. Chapter~4 outlines the multi-modal biometric processing pipelines. Chapter~5 documents system implementation details, latency benchmarks, and empirical security evaluations. Finally, Chapter~6 provides concluding remarks and future research directions.
-
-\chapter{Master System Architecture and Hardware Engineering}
-
-\section{Tiered System Architecture}
-NID SecureGuard is organized across four distinct functional tiers interacting over authenticated interfaces, as visualized in Figure~\ref{fig:master_architecture}.
+\subsection{Hardware Architecture}
+The edge IoT layer is designed as an autonomous physical station. The ESP32-S3 microcontroller acts as the central embedded controller, coordinating image acquisition, optical fingerprint scanning, real-time clock calibration, and cryptographic signature generation.
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
-    node distance=1.4cm and 1.0cm,
-    hw/.style={rectangle, draw=brandgreen, fill=accentemerald!12, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.1cm},
+    node distance=1.3cm and 1.0cm,
+    hw/.style={rectangle, draw=brandgreen, fill=accentemerald!12, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.0cm},
     proxy/.style={rectangle, draw=primarydark, fill=codebg, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.0cm},
-    backend/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.1cm},
-    db/.style={cylinder, shape border rotate=90, draw=purple!80!black, fill=purple!5, thick, aspect=0.25, text width=3.2cm, align=center, minimum height=1.1cm},
+    backend/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners, text width=3.8cm, align=center, minimum height=1.0cm},
+    db/.style={cylinder, shape border rotate=90, draw=purple!80!black, fill=purple!5, thick, aspect=0.25, text width=3.2cm, align=center, minimum height=1.0cm},
     arrow/.style={draw=primarydark, -{Latex[length=2.5mm]}, thick}
 ]
 
-% Tier 1: Hardware Edge
+% Nodes
 \node[hw] (esp) {\textbf{ESP32-S3 Edge Station}\\Dual-Core 240MHz + mbedtls};
 \node[hw, left=of esp] (cam) {\textbf{OV2640 Camera}\\640x480 DVP Parallel Bus};
 \node[hw, right=of esp] (fp) {\textbf{R307S Fingerprint}\\500 DPI Optical UART1};
 
-% Tier 2: Ingress Proxy
 \node[proxy, below=of esp] (tunnel) {\textbf{Cloudflare Ingress Tunnel}\\TLS 1.3 Reverse Proxy};
-
-% Tier 3: Cloud Backend
 \node[backend, below=of tunnel] (api) {\textbf{FastAPI Application Core}\\Python 3.12 Asynchronous ASGI};
-\node[backend, left=of api] (biometric) {\textbf{Multi-Modal Engine}\\LBPH Recognizer + Minutiae};
-\node[backend, right=of api] (crypto) {\textbf{Cryptographic Engine}\\AES-256-GCM + Hash Chain};
-
-% Tier 4: Database & Client
 \node[db, below=of api] (db) {\textbf{Supabase PostgreSQL}\\Encrypted Relational Ledger};
-\node[proxy, below=of biometric] (ui) {\textbf{React 19 Frontend}\\Kiosk \& Operator Console};
 
 % Connectors
 \path[arrow] (cam) -- (esp);
 \path[arrow] (fp) -- (esp);
-\path[arrow] (esp) -- node[right]{\small HMAC Signatures} (tunnel);
+\path[arrow] (esp) -- node[right]{\small HMAC-Signed HTTP} (tunnel);
 \path[arrow] (tunnel) -- (api);
-\path[arrow] (api) -- (biometric);
-\path[arrow] (api) -- (crypto);
 \path[arrow] (api) -- (db);
-\path[arrow] (api) -- (ui);
-\path[arrow] (biometric) -- (db);
-\path[arrow] (crypto) -- (db);
 
 \end{tikzpicture}
-\caption{End-to-end multi-tier cyber-physical architecture of NID SecureGuard.}
-\label{fig:master_architecture}
+\caption{End-to-end cyber-physical architecture of NID SecureGuard.}
+\label{fig:arch}
 \end{figure}
 
-\section{Hardware Component Specifications}
-\begin{itemize}[leftmargin=2em]
-    \item \textbf{Microcontroller Unit:} ESP32-S3-WROOM-1 featuring dual-core Xtensa 32-bit LX7 processors operating at 240~MHz, 8~MB external octal PSRAM, 512~KB SRAM, and an integrated hardware cryptographic co-processor.
-    \item \textbf{Optical Imaging Peripheral:} Omnivision OV2640 CMOS 2.0 Megapixel sensor module streaming 640x480 (VGA) JPEG frames across an 8-bit parallel Digital Video Port (DVP).
-    \item \textbf{Biometric Optical Sensor:} Grow R307S optical sensor incorporating an integrated DSP processor, 500~DPI spatial resolution, blue optical LED ring, and internal flash memory storing up to 200 fingerprint templates.
-\end{itemize}
-
-\section{Electrical Interfacing and Pinout}
-To ensure deterministic execution and prevent bus contention between high-throughput Direct Memory Access (DMA) camera buffers and optical serial communication, dedicated hardware buses are routed as summarized in Table~\ref{tab:pinout}.
+\subsection{Circuit Schematics and Wiring Mapping}
+To prevent bus contention between high-throughput Direct Memory Access (DMA) camera buffers and optical serial communication, dedicated hardware buses are routed as detailed in Table~\ref{tab:pinout}.
 
 \begin{table}[htbp]
 \centering
 \small
-\caption{ESP32-S3 Edge Station Hardware Pinout Mapping.}
+\caption{ESP32-S3 Hardware Pinout and Peripheral Mapping.}
 \label{tab:pinout}
-\begin{tabularx}{\textwidth}{p{3.2cm} p{2.8cm} p{3.2cm} X}
+\begin{tabularx}{\textwidth}{p{3.0cm} p{2.2cm} p{2.8cm} X}
 \toprule
 \textbf{Peripheral} & \textbf{Pin Function} & \textbf{ESP32-S3 GPIO} & \textbf{Electrical Specification} \\
 \midrule
@@ -329,17 +201,18 @@ To ensure deterministic execution and prevent bus contention between high-throug
 \end{tabularx}
 \end{table}
 
-\section{Edge Clock Synchronization Protocol}
-To maintain microsecond-accurate time agreement between edge hardware and cloud servers for replay protection, the ESP32-S3 executes dual-phase time synchronization:
+\subsection{Edge Clock Calibration Protocol}
+Strict replay protection mandates exact time synchronization between the edge hardware and cloud servers. The ESP32-S3 executes dual-phase time calibration:
 \begin{enumerate}
-    \item \textbf{Primary SNTP Sync:} Upon booting, the microcontroller queries public Network Time Protocol servers (\texttt{pool.ntp.org}, \texttt{time.google.com}) via UDP port 123.
-    \item \textbf{Secondary Cloud HTTP Epoch Fallback:} If UDP traffic is restricted by local network firewalls, the station queries \texttt{GET /api/v1/device/time} over HTTP to synchronize its internal Real-Time Clock (RTC).
+    \item \textbf{Primary SNTP Sync:} Upon initialization, the microcontroller queries public Network Time Protocol servers (\texttt{pool.ntp.org}, \texttt{time.google.com}) via UDP port 123.
+    \item \textbf{Secondary Cloud HTTP Epoch Fallback:} If UDP traffic is blocked by local cellular or NAT firewalls, the station queries \texttt{GET /api/v1/device/time} over HTTP to synchronize its internal Real-Time Clock (RTC).
 \end{enumerate}
 
-\chapter{Cryptographic Foundations and Threat Mitigation}
+% ==================== 3. SECURITY FRAMEWORK ====================
+\section{Security Framework}
 
-\section{Hardware-to-Cloud HMAC-SHA256 Anti-Spoofing}
-To defeat packet injection and edge emulation attacks, all outgoing requests from the ESP32-S3 are cryptographically signed. Let $K_{\text{device}} \in \{0, 1\}^{256}$ represent the pre-shared secret key shared between microcontroller flash memory and cloud environment settings.
+\subsection{Hardware HMAC Anti-Spoofing Protocol}
+To defeat packet injection and edge emulation attacks, all outgoing requests from the ESP32-S3 are cryptographically signed. Let $K_{\text{device}} \in \{0, 1\}^{256}$ represent the pre-shared secret key shared between microcontroller flash memory and cloud settings.
 
 When dispatching a sensor heartbeat, captured frame, or verification result at Unix epoch time $t_{\text{epoch}}$, the ESP32 computes:
 \begin{equation}
@@ -355,21 +228,19 @@ The backend verification engine validates:
 \end{align}
 If $\Delta t > 60$ or if $\sigma \ne \sigma_{\text{computed}}$, the request is immediately dropped with HTTP 403 Forbidden. Constant-time byte comparison is enforced to prevent timing analysis attacks.
 
-\section{Application-Level Field Encryption (AES-256-GCM)}
+\subsection{Field-Level Encryption}
 Citizen biographical information is encrypted prior to database insertion. The encryption engine employs AES-256 in Galois/Counter Mode (GCM):
 \begin{equation}
 (C, T) = \text{AES-256-GCM-Encrypt}\left(K_{\text{data}}, \, \text{IV}_{96}, \, M\right)
 \label{eq:aes}
 \end{equation}
-where $K_{\text{data}}$ is the 256-bit symmetric data key, $\text{IV}_{96}$ is a cryptographically secure 96-bit random initialization vector generated per transaction via \texttt{os.urandom(12)}, $M$ is the plaintext attribute, $C$ is the ciphertext, and $T$ is the 128-bit authentication tag.
-
-The database stores formatted strings:
+where $K_{\text{data}}$ is the 256-bit symmetric data key, $\text{IV}_{96}$ is a cryptographically secure 96-bit random initialization vector generated per transaction via \texttt{os.urandom(12)}, $M$ is the plaintext attribute, $C$ is the ciphertext, and $T$ is the 128-bit authentication tag. The database persists formatted strings:
 \begin{equation}
 \texttt{enc:v1:} \parallel \text{Base64}\left( \text{IV}_{96} \parallel T \parallel C \right)
 \end{equation}
-During decryption, authentication tag $T$ is verified, ensuring that any ciphertext tampering is rejected prior to plain output.
+During decryption, authentication tag $T$ is verified, ensuring that any ciphertext tampering is rejected prior to plaintext output.
 
-\section{Deterministic Blind Indexing}
+\subsection{Deterministic Blind Indexing}
 Because non-deterministic initialization vectors produce unique ciphertexts for identical inputs, standard relational indexing cannot be used. NID SecureGuard introduces a cryptographic Blind Index:
 \begin{equation}
 I_{\text{NID}} = \text{HMAC-SHA256}\left( K_{\text{pepper}}, \, \text{NID} \right)
@@ -377,8 +248,8 @@ I_{\text{NID}} = \text{HMAC-SHA256}\left( K_{\text{pepper}}, \, \text{NID} \righ
 \end{equation}
 where $K_{\text{pepper}}$ is an isolated cryptographic secret stored outside the database schema. The resulting 64-character hexadecimal string is stored in the indexed database column \texttt{users.nid\_hash}, enabling $O(1)$ relational lookups without exposing citizen NID numbers in query logs.
 
-\section{Tamper-Evident Forensic Audit Ledger}
-To ensure accountability, all verification events $L_i$ are linked into a directed cryptographic ledger. Let $H_0 = \text{SHA256}(\text{"GENESIS\_NID\_SECUREGUARD"})$. For every successive access attempt $i \ge 1$:
+\subsection{Tamper-Evident Hash Chaining}
+To ensure administrative accountability, all verification events $L_i$ are linked into a directed cryptographic ledger. Let $H_0 = \text{SHA256}(\text{"GENESIS\_NID\_SECUREGUARD"})$. For every successive access attempt $i \ge 1$:
 \begin{equation}
 H_i = \text{SHA256}\left( H_{i-1} \parallel \text{CanonicalJSON}(L_i) \right)
 \label{eq:chain}
@@ -390,9 +261,10 @@ Each entry is sealed with an auditor digital signature:
 \end{equation}
 If an adversary alters any log entry, changes a timestamp, or deletes a historical record in PostgreSQL, the mathematical equality $H_j = \text{SHA256}(H_{j-1} \parallel L_j)$ fails for all subsequent entries $j \ge i$, raising an immediate tamper alarm during forensic audits.
 
-\chapter{Multi-Modal Biometric Processing Pipeline}
+% ==================== 4. BIOMETRIC VERIFICATION ====================
+\section{Biometric Verification}
 
-\section{1:1 Multi-Modal Verification Protocol}
+\subsection{Multi-Modal Decision Policy}
 NID SecureGuard employs a conjunctive 1:1 matching policy rather than unconstrained 1:N searching. As illustrated in Figure~\ref{fig:biometric_flowchart}, access is granted if and only if facial and optical biometric tests both pass:
 \begin{equation}
 \text{Decision} = 
@@ -406,37 +278,37 @@ NID SecureGuard employs a conjunctive 1:1 matching policy rather than unconstrai
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
-    node distance=1.1cm and 1.0cm,
-    startstop/.style={rectangle, rounded corners, minimum width=3.0cm, minimum height=0.9cm, text centered, align=center, draw=primarydark, fill=codebg, thick},
-    process/.style={rectangle, minimum width=3.4cm, minimum height=0.9cm, text centered, align=center, draw=blue!70!black, fill=blue!5, thick},
-    decision/.style={diamond, aspect=2, text centered, align=center, draw=purple!80!black, fill=purple!5, thick, inner sep=2pt},
+    node distance=0.9cm and 0.8cm,
+    startstop/.style={rectangle, rounded corners, minimum width=2.8cm, minimum height=0.8cm, text centered, align=center, draw=primarydark, fill=codebg, thick, font=\small},
+    process/.style={rectangle, minimum width=3.2cm, minimum height=0.8cm, text centered, align=center, draw=blue!70!black, fill=blue!5, thick, font=\small},
+    decision/.style={diamond, aspect=1.8, text centered, align=center, draw=purple!80!black, fill=purple!5, thick, inner sep=2pt, font=\small},
     arrow/.style={thick, -{Latex[length=2.5mm]}, draw=primarydark}
 ]
 
 \node[startstop] (start) {Citizen Inputs NID};
-\node[process, below=of start] (lookup) {HMAC Blind Index Search in DB};
+\node[process, below=of start] (lookup) {HMAC Blind Index Search};
 \node[decision, below=of lookup] (exists) {Citizen Enrolled?};
-\node[process, right=1.5cm of exists] (unreg) {Display Enrollment Option};
+\node[process, right=1.0cm of exists] (unreg) {Prompt Enrollment};
 \node[process, below=of exists] (trigger) {Trigger Multi-Modal Capture};
 
-\node[process, below left=1.2cm and 0.2cm of trigger] (face) {OpenCV LBPH Face Match\\$\chi^2 \le 80.0$};
-\node[process, below right=1.2cm and 0.2cm of trigger] (fp) {R307S Optical Minutiae Match\\Slot Matched in Citizen Profile};
+\node[process, below left=1.0cm and 0.2cm of trigger] (face) {OpenCV LBPH Face\\$\chi^2 \le 80.0$};
+\node[process, below right=1.0cm and 0.2cm of trigger] (fp) {R307S Minutiae\\Assigned Slot Match};
 
-\node[decision, below=2.6cm of trigger] (dual) {Both Biometrics Pass?};
-\node[startstop, below=1.2cm of dual] (grant) {\textbf{ACCESS GRANTED}};
-\node[startstop, right=1.8cm of dual] (deny) {\textbf{ACCESS DENIED}};
-\node[process, below=1.0cm of grant] (log) {Append Hash-Chained Audit Seal};
+\node[decision, below=2.3cm of trigger] (dual) {Both Biometrics Pass?};
+\node[startstop, below=1.0cm of dual] (grant) {\textbf{ACCESS GRANTED}};
+\node[startstop, right=1.2cm of dual] (deny) {\textbf{ACCESS DENIED}};
+\node[process, below=0.8cm of grant] (log) {Append Hash-Chained Seal};
 
 \path[arrow] (start) -- (lookup);
 \path[arrow] (lookup) -- (exists);
-\path[arrow] (exists) -- node[right]{\small Yes} (trigger);
-\path[arrow] (exists) -- node[above]{\small No} (unreg);
+\path[arrow] (exists) -- node[right]{\footnotesize Yes} (trigger);
+\path[arrow] (exists) -- node[above]{\footnotesize No} (unreg);
 \path[arrow] (trigger) -| (face);
 \path[arrow] (trigger) -| (fp);
 \path[arrow] (face) |- (dual);
 \path[arrow] (fp) |- (dual);
-\path[arrow] (dual) -- node[right]{\small Yes} (grant);
-\path[arrow] (dual) -- node[above]{\small No} (deny);
+\path[arrow] (dual) -- node[right]{\footnotesize Yes} (grant);
+\path[arrow] (dual) -- node[above]{\footnotesize No} (deny);
 \path[arrow] (grant) -- (log);
 \path[arrow] (deny) |- (log);
 
@@ -445,7 +317,7 @@ NID SecureGuard employs a conjunctive 1:1 matching policy rather than unconstrai
 \label{fig:biometric_flowchart}
 \end{figure}
 
-\section{Facial Recognition Subsystem (OpenCV LBPH)}
+\subsection{Facial Feature Extraction Pipeline}
 \begin{enumerate}
     \item \textbf{Face Localization:} Live $640 \times 480$ frames are converted to 8-bit grayscale. A Haar Cascade classifier locates the primary facial bounding box $(x, y, w, h)$.
     \item \textbf{Contrast and Focus Measure:} The cropped facial region is evaluated via the variance of the Laplacian filter:
@@ -471,10 +343,8 @@ NID SecureGuard employs a conjunctive 1:1 matching policy rather than unconstrai
     \end{equation}
 \end{enumerate}
 
-\section{Optical Fingerprint Minutiae \& Dynamic Slot Allocation}
-The Grow R307S optical sensor extracts ridge endings and bifurcation minutiae on-chip, storing 512-byte templates in discrete integer slots ($S \in [1, 200]$).
-
-To prevent flash memory overwriting during multi-user onboarding, the backend provides an automated allocation algorithm:
+\subsection{Optical Minutiae Matching and Slot Allocation}
+The Grow R307S optical sensor extracts ridge endings and bifurcation minutiae on-chip, storing 512-byte templates in discrete integer slots ($S \in [1, 200]$). To prevent flash memory overwriting during multi-user onboarding, the backend provides an automated allocation algorithm:
 \begin{equation}
 S_{\text{next}} = 
 \begin{cases}
@@ -485,19 +355,11 @@ S_{\text{next}} =
 \end{equation}
 This ensures deterministic hardware slot tracking and zero physical overwriting between enrolled citizens.
 
-\chapter{Implementation Details and Experimental Benchmarks}
+% ==================== 5. EXPERIMENTAL RESULTS ====================
+\section{Experimental Results}
 
-\section{System Implementation Framework}
-The software stack is implemented across the following modules:
-\begin{itemize}[leftmargin=2em]
-    \item \textbf{Firmware:} ESP32-S3 Arduino C++ with \texttt{mbedtls} hardware acceleration, non-blocking polling, and FreeRTOS task scheduling.
-    \item \textbf{Cloud Gateway:} Python 3.12 with FastAPI, Uvicorn ASGI server, and OpenCV 4.10.
-    \item \textbf{Database Infrastructure:} Supabase PostgreSQL with Row Level Security (RLS) and real-time WebSockets.
-    \item \textbf{User Interface:} React 19, TypeScript, and Tailwind CSS compiled with Vite.
-\end{itemize}
-
-\section{Biometric Accuracy Benchmarks}
-Evaluation was conducted on live subjects under diverse indoor ambient lighting and sensor placement angles (Table~\ref{tab:accuracy}).
+\subsection{Biometric Accuracy Benchmarks}
+Empirical evaluation was conducted on live subjects under diverse indoor ambient lighting and sensor placement angles (Table~\ref{tab:accuracy}).
 
 \begin{table}[htbp]
 \centering
@@ -515,7 +377,7 @@ Fingerprint (Grow R307S Optical) & $0.001\%$ & $0.95\%$ & Sensor Match Score $\g
 \end{tabularx}
 \end{table}
 
-\section{End-to-End Latency Profile}
+\subsection{System Latency Profile}
 The latency budget was evaluated across 100 consecutive verification sessions over a live cellular tunnel (Table~\ref{tab:latency}).
 
 \begin{table}[htbp]
@@ -539,7 +401,7 @@ Cryptographic Audit Ledger Write     & $41\text{ ms}$  & $\pm 5\text{ ms}$ \\
 \end{tabularx}
 \end{table}
 
-\section{Security Stress Testing and Adversarial Evaluation}
+\subsection{Adversarial Security Evaluation}
 The system was evaluated against simulated physical and network attack vectors (Table~\ref{tab:security_eval}).
 
 \begin{table}[htbp]
@@ -561,16 +423,8 @@ The system was evaluated against simulated physical and network attack vectors (
 \end{tabularx}
 \end{table}
 
-\chapter{Conclusion and Future Roadmap}
-
-\section{Summary of Contributions}
-This project successfully designed, implemented, and validated \textbf{NID SecureGuard}, an end-to-end cyber-physical architecture for secure National ID verification. By combining embedded edge hardware HMAC attestation, dual-factor multi-modal biometrics ($1:1$ face and fingerprint), application-level AES-256-GCM encryption, deterministic blind indexing, and immutable forward-chained audit ledgers, the platform resolves critical physical and cyber vulnerabilities found in conventional biometric terminals.
-
-\section{Future Roadmap}
-\begin{enumerate}[label=\textbf{\arabic*.}]
-    \item \textbf{On-Chip Edge AI Acceleration:} Port facial feature extraction to MobileFaceNet running on the ESP32-S3 vector instruction set (ESP-NN), enabling on-chip biometric inference and reducing network bandwidth.
-    \item \textbf{Infrared Active Liveness Detection:} Incorporate near-infrared (NIR) dual-sensor cameras to detect 3D facial depth and actively prevent high-resolution photograph presentation attacks.
-    \item \textbf{Decentralized Mesh Synchronization:} Support Bluetooth Low Energy (BLE) and LoRaWAN mesh communication for verification in remote civic environments lacking cellular or internet connectivity.
-\end{enumerate}
+% ==================== 6. CONCLUSION ====================
+\section{Conclusion}
+This laboratory project successfully designed, implemented, and validated \textbf{NID SecureGuard}, an end-to-end cyber-physical architecture for secure National ID biometric verification. By combining embedded edge hardware HMAC attestation, dual-factor multi-modal biometrics ($1:1$ face and fingerprint), application-level AES-256-GCM encryption, deterministic blind indexing, and immutable forward-chained audit ledgers, the platform resolves critical physical and cyber vulnerabilities found in conventional biometric terminals. The experimental findings confirm that the system meets its primary performance objectives, achieving high biometric reliability ($< 0.0001\%$ composite FAR) and sub-1.5 second transaction latency under realistic operating conditions.
 
 \end{document}
